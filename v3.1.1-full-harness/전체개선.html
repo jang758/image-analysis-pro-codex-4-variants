@@ -1,0 +1,2859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Image Analysis Pro v3.1.1 - 20260809 Codex 전체 개선</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --panel: #10131a;
+      --panel2: #0d1018;
+      --text: #e9eef7;
+      --muted: #9ca8bd;
+      --line: rgba(255,255,255,.08);
+      --good: #4ade80;
+      --bad: #f87171;
+      --warn: #fbbf24;
+      --btn: #1a1f2e;
+      --btn2: #252d42;
+      --accent: #60a5fa;
+      --accent2: #a78bfa;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5; }
+    a { color: var(--accent); }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 16px 60px; }
+    
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .header .sub { color: var(--muted); font-size: 13px; max-width: 800px; margin: 0 auto; }
+    .header .badges { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+    
+    .badge { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); font-size: 11px; color: var(--muted); }
+    .badge b { color: var(--text); font-weight: 600; }
+    .badge.green { border-color: rgba(74,222,128,.3); background: rgba(74,222,128,.08); }
+    .badge.purple { border-color: rgba(167,139,250,.3); background: rgba(167,139,250,.08); }
+    .badge.orange { border-color: rgba(251,146,60,.3); background: rgba(251,146,60,.08); }
+    
+    .topbar { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .55fr); align-items: start; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .topbar { grid-template-columns: 1fr; } }
+    
+    .card { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.4); }
+    
+    .settings { padding: 18px; }
+    .settings h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .settings h2::before { content: ''; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-note { color: var(--muted); font-size: 10px; line-height: 1.4; }
+    .api-key-field { grid-column: 1 / -1; }
+    .api-key-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; }
+    .api-key-row .btn { white-space: nowrap; padding-inline: 11px; }
+    .check-field { min-height: 39px; display: flex; flex-direction: row; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #0a0c12; color: var(--text); font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; }
+    .check-field input { width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--accent); box-shadow: none; }
+    label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select { background: #0a0c12; border: 1px solid rgba(255,255,255,.12); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 13px; outline: none; transition: border-color .2s, box-shadow .2s; }
+    input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(96,165,250,.15); }
+    input::placeholder { color: var(--muted); opacity: .6; }
+    
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+    .btn { background: var(--btn); border: 1px solid rgba(255,255,255,.1); color: var(--text); border-radius: 10px; padding: 9px 14px; font-size: 12px; cursor: pointer; transition: all .15s; }
+    .btn:hover { background: var(--btn2); border-color: rgba(255,255,255,.18); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.primary { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.35); color: var(--accent); }
+    .btn.primary:hover { background: rgba(96,165,250,.25); }
+    .btn.danger { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.25); color: var(--bad); }
+    
+    .dropzone-wrap { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .dropzone-wrap h2 { margin: 0 0 6px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .dropzone-wrap h2::before { content: ''; width: 4px; height: 16px; background: var(--accent2); border-radius: 2px; }
+    
+    .dropzone { min-height: 180px; border: 2px dashed rgba(255,255,255,.15); border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--muted); background: rgba(255,255,255,.015); cursor: pointer; transition: all .2s; }
+    .dropzone:hover { border-color: rgba(96,165,250,.4); background: rgba(96,165,250,.03); }
+    .dropzone.drag { border-color: var(--accent); background: rgba(96,165,250,.08); box-shadow: 0 0 0 4px rgba(96,165,250,.1); }
+    .dropzone .icon { font-size: 36px; margin-bottom: 8px; }
+    .dropzone .main { font-weight: 600; color: var(--text); font-size: 14px; }
+    .dropzone .sub { font-size: 12px; margin-top: 4px; }
+    
+    .jobs { display: flex; flex-direction: column; gap: 16px; }
+    .job { padding: 18px; }
+    
+    .jobhead { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .jobhead .left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .stamp { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .status { font-size: 11px; border-radius: 999px; padding: 5px 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); font-weight: 500; }
+    .status.ok { border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.08); color: var(--good); }
+    .status.err { border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.08); color: var(--bad); }
+    .status.run { border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.08); color: var(--warn); }
+    
+    .jobbody { display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
+    @media (max-width: 900px) { .jobbody { grid-template-columns: 1fr; } }
+    
+    .preview { border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,.3); overflow: hidden; }
+    .preview img { display: block; width: 100%; height: auto; max-height: 300px; object-fit: contain; background: #000; }
+    .preview .meta { padding: 10px 12px; border-top: 1px solid var(--line); }
+    .preview .meta .name { font-family: var(--mono); font-size: 12px; font-weight: 600; word-break: break-all; }
+    .preview .meta .info { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    
+    .outputs { display: flex; flex-direction: column; gap: 14px; }
+    
+    .section { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.015); }
+    .section .bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,.02); border-bottom: 1px solid var(--line); }
+    .section .bar h3 { margin: 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .section .bar h3 .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(96,165,250,.15); color: var(--accent); font-weight: 500; }
+    .section .bar .controls { display: flex; gap: 6px; align-items: center; }
+    .section .bar .count { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    
+    .section pre { margin: 0; padding: 14px; white-space: pre-wrap; word-break: break-word; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: rgba(233,238,247,.92); max-height: 500px; overflow-y: auto; }
+    .section pre::-webkit-scrollbar { width: 6px; }
+    .section pre::-webkit-scrollbar-track { background: transparent; }
+    .section pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 3px; }
+    
+    details { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.015); }
+    details summary { cursor: pointer; padding: 10px 14px; font-size: 12px; color: var(--muted); user-select: none; }
+    details summary:hover { color: var(--text); }
+    details .inner { padding: 14px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
+    
+    .toast { position: fixed; right: 16px; bottom: 16px; background: rgba(16,19,26,.95); border: 1px solid var(--line); color: var(--text); padding: 12px 16px; border-radius: 12px; font-size: 13px; display: none; max-width: min(400px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0,0,0,.5); backdrop-filter: blur(10px); z-index: 1000; }
+    .toast.show { display: block; animation: slideIn .25s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .progress { height: 3px; background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+    .progress .bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0%; transition: width .3s; }
+    
+    .tabs { display: flex; gap: 4px; padding: 0 14px; background: rgba(255,255,255,.02); border-bottom: 1px solid var(--line); }
+    .tab { padding: 10px 16px; font-size: 12px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .schema-info { margin-top: 16px; padding: 16px; border-radius: 12px; background: rgba(96,165,250,.05); border: 1px solid rgba(96,165,250,.2); }
+    .schema-info summary { color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .schema-info[open] summary { margin-bottom: 10px; }
+    .schema-info .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    @media (max-width: 768px) { .schema-info .grid-3 { grid-template-columns: 1fr; } }
+    .schema-info .item { font-size: 11px; padding: 4px 8px; background: rgba(255,255,255,.03); border-radius: 4px; }
+    .mono { font-family: var(--mono); }
+    .small { font-size: 11px; color: var(--muted); }
+    .history-card { margin: 0 0 20px; padding: 16px 18px; }
+    .history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .history-head h2 { margin: 0; font-size: 15px; }
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+    .history-empty { color: var(--muted); font-size: 12px; padding: 8px 0; }
+    .history-list details .inner { max-height: 520px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Image Analysis Pro v3.1.1 · Codex 전체 개선</h1>
+      <div class="sub">
+        <b>3단계 파이프라인: 상세분석 → 중간 리포트(70~80%) → 생성 프롬프트</b><br/>
+        증거 원장 → 이중언어 초안 → 이미지 대조 최종검수 | 최신 모델/API·키 보안·대용량 이미지·Agentic Vision 개선
+      </div>
+      <div class="badges">
+        <span class="badge green"><b>Default</b> gemini-pro-latest</span>
+        <span class="badge purple"><b>API</b> Interactions v1beta</span>
+        <span class="badge orange"><b>Fields</b> 22+ Complete Schema</span>
+        <span class="badge"><b>Output</b> EN + KR Bilingual</span>
+        <span class="badge green"><b>Key</b> Session Only</span>
+      </div>
+    </div>
+
+    <div class="topbar">
+      <div class="card settings">
+        <h2>Settings</h2>
+        <div class="grid">
+          <div class="field api-key-field">
+            <label>Gemini API Key</label>
+            <div class="api-key-row">
+              <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" />
+              <button class="btn" id="pasteApiKey" type="button">붙여넣기</button>
+              <button class="btn" id="toggleApiKey" type="button" aria-pressed="false">보기</button>
+            </div>
+            <div class="field-note">붙여넣기 버튼 또는 입력칸의 Ctrl+V를 사용하세요. 키는 저장되지 않으며 현재 페이지에서만 사용됩니다.</div>
+          </div>
+          <div class="field">
+            <label>Model</label>
+            <select id="model">
+              <option value="gemini-pro-latest" selected>gemini-pro-latest — Latest Pro</option>
+              <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
+              <option value="gemini-3.1-pro-preview-customtools">gemini-3.1-pro-preview-customtools</option>
+              <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+              <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+              <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
+              <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+              <option value="gemini-flash-latest">gemini-flash-latest — Latest Flash</option>
+              <option value="gemini-flash-lite-latest">gemini-flash-lite-latest — Latest Flash-Lite</option>
+              <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+              <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+              <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+            </select>
+            <div class="field-note" id="modelHint">최고 성능 우선 기본값: gemini-pro-latest</div>
+          </div>
+          <div class="field">
+            <label>Custom Model</label>
+            <input id="customModel" type="text" placeholder="Override" />
+            <div class="field-note">목록에 없는 정확한 모델 ID를 직접 입력합니다. 값이 있으면 위 Model 선택을 무시합니다. 일반적으로 비워두세요.</div>
+          </div>
+          <div class="field">
+            <label>Max Tokens (Analysis)</label>
+            <input id="maxTokensAnalysis" type="number" min="2048" step="512" value="16384" />
+          </div>
+          <div class="field">
+            <label>Max Tokens (Report)</label>
+            <input id="maxTokensReport" type="number" min="2048" step="512" value="8192" />
+          </div>
+          <div class="field">
+            <label>Max Tokens (Prompt)</label>
+            <input id="maxTokensPrompt" type="number" min="512" step="256" value="4096" />
+          </div>
+          <div class="field">
+            <label>Thinking Level</label>
+            <select id="thinking">
+              <option value="auto" selected>Auto</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Camera Meta Style</label>
+            <select id="cameraMeta">
+              <option value="numeric">Numeric (50mm)</option>
+              <option value="spelled">Spelled (fifty mm)</option>
+              <option value="none">Omit</option>
+            </select>
+            <div class="field-note">실제 EXIF를 읽는 기능이 아닙니다. Numeric은 50mm처럼 숫자로, Spelled는 fifty millimeter처럼 글자로, Omit은 생성 프롬프트에서 카메라 설정을 제외합니다.</div>
+          </div>
+          <div class="field">
+            <label>Agentic Vision</label>
+            <label class="check-field"><input id="agenticVision" type="checkbox" /><span>확대·회전·계산에 Python 사용</span></label>
+            <div class="field-note">선택한 모델이 모든 단계를 수행합니다. 다른 모델로 자동 전환하지 않습니다.</div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="saveSettings">Save Settings (Key 제외)</button>
+          <button class="btn" id="clearSettings">Clear</button>
+          <button class="btn" id="refreshModels">Refresh Models</button>
+          <button class="btn danger" id="clearHistory">Clear History</button>
+        </div>
+        
+        <details class="schema-info">
+          <summary>📋 통합된 분석 필드 22개 보기</summary>
+          <div class="grid-3">
+            <div class="item">1. face / face_ko</div>
+            <div class="item">2. expression / expression_ko</div>
+            <div class="item">3. body / body_ko</div>
+            <div class="item">4. fashion / fashion_ko</div>
+            <div class="item">5. pose / pose_ko</div>
+            <div class="item">6. skin / skin_ko</div>
+            <div class="item">7. lighting / lighting_ko</div>
+            <div class="item">8. camera / camera_ko</div>
+            <div class="item">9. background / background_ko</div>
+            <div class="item">10. effects / effects_ko</div>
+            <div class="item">11. interaction / interaction_ko</div>
+            <div class="item">12. kinematics / kinematics_ko</div>
+            <div class="item">13. optics_dynamics / optics_dynamics_ko</div>
+            <div class="item">14. proximity_metrics / proximity_metrics_ko</div>
+            <div class="item">15. micro_expressions / micro_expressions_ko</div>
+            <div class="item">16. emotional_inference / emotional_inference_ko</div>
+            <div class="item">17. sartorial_physics / sartorial_physics_ko</div>
+            <div class="item">18. limb_topology / limb_topology_ko</div>
+            <div class="item">19. spatial_topology / spatial_topology_ko</div>
+            <div class="item">20. elasticity_ptosis / elasticity_ptosis_ko</div>
+            <div class="item">21. skeleton_mapping / skeleton_mapping_ko</div>
+            <div class="item">22. digital_lut_fx / digital_lut_fx_ko</div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card dropzone-wrap">
+        <h2>Image Input</h2>
+        <div id="dropzone" class="dropzone">
+          <div>
+            <div class="icon">📷</div>
+            <div class="main">Click / Drag & Drop / Ctrl+V</div>
+            <div class="sub">완전한 22+ 필드 분석이 시작됩니다</div>
+          </div>
+        </div>
+        <input id="fileInput" type="file" accept="image/*" style="display:none" />
+        <div class="row">
+          <button class="btn" id="btnPick">Choose File</button>
+          <span class="badge" id="netStatus"><b>NET</b> Checking...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card history-card">
+      <div class="history-head">
+        <h2>실행 히스토리</h2>
+        <span class="badge" id="historyCount"><b>0</b> runs</span>
+      </div>
+      <div id="historyList" class="history-list"><div class="history-empty">저장된 실행 기록이 없습니다.</div></div>
+    </div>
+
+    <div id="jobs" class="jobs"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+(function() {
+  'use strict';
+  
+  const $ = id => document.getElementById(id);
+  const toast = msg => {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  };
+  
+  const nowStamp = () => {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  
+  const fileStamp = () => {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  };
+  
+  const safeName = s => (s || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 60);
+
+  // Network Status
+  const updateNetStatus = () => {
+    const pill = $('netStatus');
+    const online = navigator.onLine;
+    pill.innerHTML = `<b>NET</b> ${online ? 'ONLINE' : 'OFFLINE'}`;
+    pill.style.borderColor = online ? 'rgba(74,222,128,.3)' : 'rgba(248,113,113,.3)';
+    pill.style.background = online ? 'rgba(74,222,128,.08)' : 'rgba(248,113,113,.08)';
+  };
+  window.addEventListener('online', updateNetStatus);
+  window.addEventListener('offline', updateNetStatus);
+  updateNetStatus();
+
+  // App identity + isolated storage. API keys are never written to storage.
+  const APP_VARIANT = 'fullHarness';
+  const APP_VERSION = 'v3.1.1-codex-20260809';
+  const STORAGE_NS = `imageAnalysisPro.${APP_VERSION}.${APP_VARIANT}`;
+  const SETTINGS_KEY = `${STORAGE_NS}.settings`;
+  const HISTORY_KEY = `${STORAGE_NS}.history`;
+  const MODEL_CACHE_KEY = `${STORAGE_NS}.modelMeta`;
+  const LEGACY_SETTINGS_KEY = 'imageAnalysisPro.settings.v31';
+  const DEFAULT_MODEL = 'gemini-pro-latest';
+  const DEFAULT_ANALYSIS_MODELS = [
+    'gemini-pro-latest',
+    'gemini-3.1-pro-preview',
+    'gemini-3.1-pro-preview-customtools',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite'
+  ];
+  let MODEL_META = {};
+
+  function selectModelValue(modelId) {
+    const id = normalizeModelId(modelId);
+    if (!id) return;
+    const sel = $('model');
+    if (![...sel.options].some(opt => opt.value === id)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = id;
+      sel.appendChild(opt);
+    }
+    sel.value = id;
+  }
+
+  function migrateLegacySettings() {
+    try {
+      const raw = localStorage.getItem(LEGACY_SETTINGS_KEY);
+      if (!raw) return;
+      const legacy = JSON.parse(raw);
+      if (!legacy || typeof legacy !== 'object') return;
+
+      // Remove the plaintext key from the old namespace as requested.
+      if (Object.prototype.hasOwnProperty.call(legacy, 'apiKey')) {
+        delete legacy.apiKey;
+        localStorage.setItem(LEGACY_SETTINGS_KEY, JSON.stringify(legacy));
+      }
+
+      if (!localStorage.getItem(SETTINGS_KEY)) {
+        const migrated = {};
+        ['model', 'customModel', 'maxTokensAnalysis', 'maxTokensReport', 'maxTokensPrompt', 'thinking', 'cameraMeta']
+          .forEach(key => {
+            if (legacy[key] !== undefined) migrated[key] = legacy[key];
+          });
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(migrated));
+      }
+    } catch (e) {
+      console.error('Legacy settings migration error:', e);
+    }
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s.model) selectModelValue(s.model);
+      if (s.customModel) $('customModel').value = s.customModel;
+      if (s.maxTokensAnalysis) $('maxTokensAnalysis').value = s.maxTokensAnalysis;
+      if (s.maxTokensReport) $('maxTokensReport').value = s.maxTokensReport;
+      if (s.maxTokensPrompt) $('maxTokensPrompt').value = s.maxTokensPrompt;
+      if (s.thinking) $('thinking').value = s.thinking;
+      if (s.cameraMeta) $('cameraMeta').value = s.cameraMeta;
+      if (typeof s.agenticVision === 'boolean') $('agenticVision').checked = s.agenticVision;
+    } catch (e) { console.error('Load settings error:', e); }
+  }
+
+  function saveSettings() {
+    const s = {
+      model: $('model').value,
+      customModel: $('customModel').value.trim(),
+      maxTokensAnalysis: Number($('maxTokensAnalysis').value) || 16384,
+      maxTokensReport: Number($('maxTokensReport').value) || 8192,
+      maxTokensPrompt: Number($('maxTokensPrompt').value) || 4096,
+      thinking: $('thinking').value,
+      cameraMeta: $('cameraMeta').value,
+      agenticVision: $('agenticVision').checked
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    toast('Settings saved');
+  }
+
+  function clearSettings() {
+    localStorage.removeItem(SETTINGS_KEY);
+    $('apiKey').value = '';
+    $('apiKey').type = 'password';
+    $('toggleApiKey').textContent = '보기';
+    $('toggleApiKey').setAttribute('aria-pressed', 'false');
+    $('customModel').value = '';
+    $('maxTokensAnalysis').value = '16384';
+    $('maxTokensReport').value = '8192';
+    $('maxTokensPrompt').value = '4096';
+    $('thinking').value = 'high';
+    $('cameraMeta').value = 'numeric';
+    $('agenticVision').checked = false;
+    selectModelValue(DEFAULT_MODEL);
+    syncModelControls();
+    toast('Settings cleared');
+  }
+
+  $('saveSettings').addEventListener('click', saveSettings);
+  $('clearSettings').addEventListener('click', clearSettings);
+  $('refreshModels').addEventListener('click', refreshModelList);
+
+  function setApiKeyValue(rawValue) {
+    const value = String(rawValue || '').trim();
+    if (!value) {
+      toast('클립보드에 API 키 텍스트가 없습니다.');
+      return false;
+    }
+    $('apiKey').value = value;
+    $('apiKey').dispatchEvent(new Event('input', { bubbles: true }));
+    toast('API 키를 붙여넣었습니다.');
+    return true;
+  }
+
+  $('apiKey').addEventListener('paste', (e) => {
+    const text = e.clipboardData?.getData('text/plain');
+    if (!text) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setApiKeyValue(text);
+  });
+
+  $('pasteApiKey').addEventListener('click', async () => {
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('Clipboard API unavailable');
+      const text = await navigator.clipboard.readText();
+      setApiKeyValue(text);
+    } catch (e) {
+      $('apiKey').focus();
+      toast('브라우저가 클립보드 읽기를 막았습니다. 입력칸에서 Ctrl+V를 누르세요.');
+    }
+  });
+
+  $('toggleApiKey').addEventListener('click', () => {
+    const show = $('apiKey').type === 'password';
+    $('apiKey').type = show ? 'text' : 'password';
+    $('toggleApiKey').textContent = show ? '숨기기' : '보기';
+    $('toggleApiKey').setAttribute('aria-pressed', String(show));
+    $('apiKey').focus();
+  });
+
+  function syncModelControls() {
+    const modelId = $('customModel').value.trim() || $('model').value;
+    applyModelCaps(modelId);
+    maybeWarnThinkingLimits(modelId, $('thinking').value);
+    $('modelHint').textContent = modelId === 'gemini-pro-latest'
+      ? '이동식 별칭: 현재 최신 Pro 모델로 연결됩니다.'
+      : `선택 모델: ${modelId}`;
+  }
+
+  // Keep token caps + thinking constraints aligned with the chosen model.
+  $('model').addEventListener('change', syncModelControls);
+  $('customModel').addEventListener('input', syncModelControls);
+  $('thinking').addEventListener('change', syncModelControls);
+
+  $('clearHistory').addEventListener('click', () => {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+    toast('History cleared');
+  });
+  migrateLegacySettings();
+  loadModelMetaCache();
+  const cachedIds = [...new Set([...DEFAULT_ANALYSIS_MODELS, ...Object.keys(MODEL_META).filter(isAnalysisModel)])];
+  cachedIds.sort((a,b)=>modelSortKey(a).localeCompare(modelSortKey(b)));
+  populateModelSelect(cachedIds, true);
+  loadSettings();
+  if (!$('model').value) selectModelValue(DEFAULT_MODEL);
+  syncModelControls();
+
+  // History
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+
+  function renderHistory() {
+    const list = $('historyList');
+    const history = loadHistory().slice().reverse();
+    list.innerHTML = '';
+    $('historyCount').innerHTML = `<b>${history.length}</b> runs`;
+    if (!history.length) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = '저장된 실행 기록이 없습니다.';
+      list.appendChild(empty);
+      return;
+    }
+    history.forEach(item => {
+      const details = document.createElement('details');
+      const summary = document.createElement('summary');
+      const status = item.status || 'UNKNOWN';
+      const av = item.agenticVisionRequested ? ` · AV ${item.agenticVisionState || 'UNKNOWN'}` : '';
+      summary.textContent = `${status} · ${item.ts || ''} · ${item.fileName || 'image'} · ${item.model || 'unknown'}${av}`;
+      const body = document.createElement('div');
+      body.className = 'inner';
+      const historyReports = {
+        en: item.runReportTextEn || '',
+        kr: item.runReportTextKr || '',
+        full: item.runReportTextFull || item.runReportText || ''
+      };
+      if (historyReports.en || historyReports.kr) {
+        const tabs = document.createElement('div');
+        tabs.className = 'tabs';
+        const report = document.createElement('pre');
+        report.textContent = historyReports.en || historyReports.kr || historyReports.full;
+        [['en', 'English'], ['kr', '한국어'], ['full', 'Full']].forEach(([language, label], index) => {
+          const tab = document.createElement('button');
+          tab.className = `tab${index === 0 ? ' active' : ''}`;
+          tab.textContent = label;
+          tab.addEventListener('click', () => {
+            tabs.querySelectorAll('.tab').forEach(itemTab => itemTab.classList.remove('active'));
+            tab.classList.add('active');
+            report.textContent = historyReports[language] || '(empty)';
+          });
+          tabs.appendChild(tab);
+        });
+        body.appendChild(tabs);
+        body.appendChild(report);
+      } else {
+        body.textContent = item.runReportText || JSON.stringify(item, null, 2);
+      }
+      details.appendChild(summary);
+      details.appendChild(body);
+      list.appendChild(details);
+    });
+  }
+
+  function saveToHistory(item) {
+    try {
+      const history = loadHistory();
+      history.push(item);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-15)));
+      renderHistory();
+    } catch (e) {
+      console.error('History save error:', e);
+      toast('History save failed');
+    }
+  }
+  renderHistory();
+
+  // ==================== COMPLETE ANALYSIS SYSTEM PROMPT ====================
+  // 기존 모든 파일(1.txt~7.txt, C.txt)의 전체 내용 통합
+  
+  function getAnalysisSystemPrompt() {
+    return `You are SUPREME_HYBRID_ANALYST, the world's foremost expert combining:
+- Digital forensics for physically reproducible specifications (from 2.txt)
+- Top-level visual art analysis and reconstruction (from 4.txt)  
+- Spatial entanglement and proximity analysis (from 7.txt)
+- Anatomical precision for pose and contact (from 1.txt, C.txt)
+- Aesthetic and cinematic quality (from 5.txt)
+
+=== IDENTITY & CORE MISSION ===
+Your goal: Extract specifications detailed enough to PERFECTLY RECONSTRUCT the original image.
+NOT mere numbers - capture mood, texture, physical dynamics, emotion as an "artistic specification."
+
+=== ABSOLUTE RULES (NO EXCEPTIONS) ===
+
+[RULE A] OBSERVATION ONLY
+- Describe ONLY what is directly visible
+- If hidden, occluded, or ambiguous, omit that unsupported detail from the visible analysis output. Do not create Unknown or Unknown/Occluded items.
+- Do NOT guess: hidden body parts, camera internals, character motives
+
+[RULE B] POSE FIRST STRUCTURE
+- For each person: analyze head→torso→arms→legs systematically
+- Cover ALL visible joints and body regions
+
+[RULE C] EXPRESSION ANALYSIS
+- Describe visible facial cues: brows, eyelids, gaze direction, mouth shape
+- Optionally add FACS AU codes ONLY if clearly supported by visible cues
+- If expression is ambiguous, state "Expression: subtle/ambiguous"
+
+[RULE D] INTERACTION PRECISION
+- If multiple people: list ALL contact points with ANATOMICAL precision
+- Use specific terms: "medial edge of left scapula contacts anterior deltoid"
+- If no contact visible: state "No direct contact observed"
+
+[RULE E] NO GORE/INTERNALS
+- External surface ONLY
+- Never describe: internal organs, cross-sections, injury mechanics, fiber bundles
+
+[RULE F] VISUAL PHENOMENA FIRST
+- Describe as visual effects, NOT raw numbers
+- Focus on: exterior appearance, muscle contours, skin expansion/contraction, joint angles
+
+[RULE G] CRITICAL PROHIBITIONS IN OUTPUT
+- NO numbers as digits in descriptive sections (convert to words or visual descriptions)
+- NO arrows, diagrams, text, symbols in image descriptions
+- NO internal anatomy schematics
+- NO grotesque alterations
+- Result must look like a PHOTOGRAPH or ARTWORK, not a diagram
+
+=== MANDATORY OUTPUT FORMAT ===
+
+===ANALYSIS_EN===
+<Complete English analysis following ALL 18 sections below>
+===ANALYSIS_KR===
+<Complete Korean analysis - same structure>
+
+=== REQUIRED 18-SECTION ANALYSIS STRUCTURE ===
+
+[1. FACE GEOMETRY & SUBDERMAL] (from C.txt)
+- Facial structure: shape, ethnicity estimation, age range
+- Head orientation: tilt angle, rotation (yaw/pitch/roll)
+- Eye state: open/closed, gaze direction and target
+- For each person if multiple subjects
+
+[2. EXPRESSION PHYSICS] (from C.txt, 1.txt)
+- Micro-expression classification: relaxed/tense/joy/sadness/neutral
+- Facial muscle analysis:
+  * Orbicularis oculi (eye area)
+  * Frontalis (forehead)
+  * Mentalis (chin)
+  * Orbicularis oris (mouth)
+- Optional FACS AU codes if clearly visible
+
+[3. 3-SIZES & BODY METRICS] (from C.txt)
+- Body type: ectomorph/mesomorph/endomorph
+- Estimated height (cm range)
+- Torso orientation: chest angle to camera, pelvis rotation
+- Body proportions: shoulder width, hip width relative
+
+[4. SKELETON MAPPING] (from C.txt)
+- Body position classification: Supine/Prone/Sitting/Standing/Kneeling/Straddling/Lateral recumbent
+- Weight distribution: which body parts bear weight
+- Skeletal landmarks: visible bone prominences, joint positions
+- 6DoF for major body parts (Translation XYZ + Rotation Yaw/Pitch/Roll)
+
+[5. INTERACTION PHYSICS & DYNAMICS] (from C.txt, 1.txt, 2.txt)
+- Contact surfaces with EXTREME anatomical precision:
+  * Format: [Subject A body part] → [Subject B body part] or [Surface]
+  * Contact type: press/grasp/hover/support
+  * Pressure indicators: skin indentation, fabric compression
+- Weight transfer vectors: "gravity flows from A's hip through to B's thigh"
+- Skin/muscle deformation: compression, expansion, tension zones
+- Proximity measurement: distance in cm between non-touching parts
+
+[6. PROXIMITY METRICS] (from 7.txt)
+- Distance: exact cm measurement between subjects
+- Occlusion depth: how much one subject blocks another
+- Overlap logic: describe intertwining/layering
+- Density descriptors: "interlocked", "fused at the hip", "pressed firmly", "zero-gap contact"
+
+[7. FASHION PHYSICS & MATERIAL] (from C.txt, 1.txt)
+- Garment type and description
+- Material: fabric type, estimated GSM (weight)
+- Colors: HEX codes if determinable
+- Fit: loose/fitted/tight
+- Deformation: wrinkles, folds, stretch patterns
+- Satin sheen, transparency levels
+
+[8. SARTORIAL PHYSICS] (from 7.txt)
+- Cloth dynamics under pose
+- Tension points and slack regions
+- How garments respond to movement/position
+- Material-body interaction
+
+[9. ELASTICITY & PTOSIS ANALYSIS] (from C.txt, 6.txt)
+- Skin tone: description + HEX if possible
+- Texture: smoothness, visible pores, subsurface scattering quality
+- Sheen locations: oily/matte areas
+- Visible features: moles, blemishes, veins
+- Soft tissue behavior: compression, bounce indicators
+
+[10. LIMB TOPOLOGY] (from 7.txt)
+- Limb arrangement in 3D space
+- Joint angles and positions
+- Overlapping/crossing limbs
+- Foreshortening effects
+
+[11. SPATIAL TOPOLOGY] (from 7.txt)
+- 3D spatial arrangement of all elements
+- Z-depth mapping: 0.0 (nearest) to 1.0 (farthest) for each major element
+- Layering order: foreground → midground → background
+- Depth cues: blur, size, overlap
+
+[12. PHOTOMETRIC & LUMINANCE DATA] (from C.txt)
+- Light source type: natural/artificial, tungsten/LED/daylight
+- Color temperature: Kelvin estimate
+- Key light: direction, intensity
+- Fill/ambient: ratio to key (e.g., 3:1)
+- Shadows: hardness, direction, color
+- Ambient occlusion locations (soft shadows in folds, under chin, etc.)
+
+[13. CAMERA OPTICS/EV] (from C.txt, 4.txt)
+- Focal length estimate: wide/normal/telephoto (mm range)
+- Aperture estimate: shallow/medium/deep DoF
+- Camera angle: high/eye-level/low
+- Camera tilt: dutch angle if any
+- Distance from subject estimate
+
+[14. ENVIRONMENT GEOMETRY] (from C.txt)
+- Location type: indoor/outdoor, specific room type
+- Visible objects and furniture
+- Surface materials: floor, walls, bedding
+- Depth from subject to background elements
+- Color palette of environment
+
+[15. KINEMATICS] (from 6.txt)
+- Motion indicators: blur, implied movement direction
+- Action phase: beginning/middle/end of movement
+- Energy flow description
+- Motion trails interpretation (if any)
+
+[16. OPTICS DYNAMICS] (from 6.txt)
+- Lens effects: bokeh shape, chromatic aberration
+- Focus plane location
+- Out-of-focus areas characterization
+- Any lens distortion
+
+[17. DIGITAL LUT/FX DATA] (from C.txt)
+- Color grading style: warm/cool/neutral
+- Film grain presence
+- Diffusion/glow effects
+- Vignetting
+- Post-processing aesthetic
+
+[18. MICRO EXPRESSIONS & EMOTIONAL INFERENCE] (from 7.txt)
+- Subtle facial cues
+- Inferred emotional state (with confidence level)
+- Relationship dynamics between subjects
+- Psychological tension or ease indicators
+
+[REASSEMBLY CHECK - FINAL SECTION]
+Write ONE comprehensive paragraph reconstructing the ENTIRE scene using ONLY stated facts.
+This must be coherent enough to recreate the image from scratch.
+Do not append Unknown or Unknown/Occluded placeholders at the end.`;
+  }
+
+  function getAnalysisUserPrompt(cameraMetaMode) {
+    const cameraRule = cameraMetaMode === 'none' 
+      ? 'Camera metadata: OMIT from later prompt generation.'
+      : cameraMetaMode === 'spelled'
+        ? 'Camera metadata: spell out numbers (e.g., "fifty millimeter lens").'
+        : 'Camera metadata: numeric format allowed (e.g., 50mm, f/2.8, 3200K).';
+
+    return `Analyze the attached image with COMPLETE PRECISION for perfect reconstruction.
+
+REQUIREMENTS:
+1. Follow ALL 18 SECTIONS exactly as specified in system instructions
+2. Be EXHAUSTIVE - this analysis will be used to recreate the image
+3. Use ANATOMICAL precision for all body parts and contacts
+4. Include 3D spatial data (Z-depth, proximity in cm, 6DoF) where determinable
+5. Omit unsupported details instead of printing Unknown or Unknown/Occluded items
+6. Output MUST include both ===ANALYSIS_EN=== and ===ANALYSIS_KR=== blocks
+7. Keep each language block at or below 8,000 characters
+
+PRIORITY ORDER:
+1. INTERACTION & CONTACT (highest) - anatomical precision, weight vectors
+2. POSE & SKELETON MAPPING - 6DoF, body position classification
+3. PROXIMITY METRICS - distances, overlap, density
+4. SPATIAL TOPOLOGY - Z-depth, layering
+5. EXPRESSION & MICRO-EXPRESSIONS
+6. MATERIALS, LIGHTING, CAMERA
+
+INTERACTION ANALYSIS RULES (from 2.txt - EXTREME PRECISION):
+- Viewpoint: describe camera lens axis relative to subject (0° = frontal to chest/pelvis)
+- Gravity/Support: identify all contact with floor, chair, bed, wall, etc.
+- Contact surfaces: use anatomical terms (e.g., "medial edge of scapula", "anterior deltoid")
+- Weight transfer: describe how force flows (e.g., "gravity from A's pelvis to B's thigh surface")
+- Skin deformation: note compression, expansion, tension where visible
+
+DENSITY DESCRIPTORS (from 7.txt):
+- Use phrases: "interlocked", "fused at the hip", "pressed firmly", "zero-gap contact"
+- Measure gaps in cm where visible
+- Describe touching with precision
+
+${cameraRule}
+
+Your analysis must enable EXACT recreation of this image. Begin now with ===ANALYSIS_EN===`;
+  }
+
+  // ==================== INTERMEDIATE REPORT SYSTEM PROMPT (NEW - STEP 1.5) ====================
+  // 회의 결과 반영: 70~80% 압축, 15개 필수 항목, Forest→Trees→Forest 흐름 유지
+  
+  function getReportSystemPrompt() {
+    return `You are REPORT_CONDENSER, specializing in compressing detailed technical analyses into actionable intermediate reports.
+
+=== IDENTITY & CORE MISSION ===
+Goal: Compress a long technical analysis to 70~80% of its original information density while:
+- PRESERVING all unique facts (no information loss)
+- REMOVING repetition and redundancy
+- MAINTAINING Forest→Trees→Forest narrative flow
+- Making the report USABLE AS A GENERATION PROMPT directly
+
+=== ABSOLUTE RULES (NO EXCEPTIONS) ===
+
+[RULE 1] SOURCE RESTRICTION (CRITICAL)
+- You receive ONLY the technical analysis TEXT as input
+- You do NOT see the original image
+- Add NOTHING that wasn't in the analysis
+- Do not create or preserve Unknown or Unknown/Occluded output items
+
+[RULE 2] COMPRESSION METHOD
+- Remove repeated phrases and redundant descriptions
+- Consolidate similar concepts into single statements
+- Merge overlapping observations
+- Keep unique details intact
+
+[RULE 3] OUT-OF-FRAME CONSOLIDATION
+- Gather ALL "Out-of-Frame" mentions into ONE dedicated section at the end
+- Format: [OUT-OF-FRAME] list of all elements not visible
+
+[RULE 4] UNSUPPORTED DETAIL OMISSION
+- Omit unsupported details instead of creating an Unknown or Unknown/Occluded section
+
+[RULE 5] NO FABRICATION
+- If the analysis doesn't mention something, do NOT invent it
+- No new measurements, angles, or details
+- No guessing beyond what was explicitly analyzed
+
+[RULE 6] FOREST→TREES→FOREST FLOW
+- Start with overall scene impression (Forest)
+- Detail individual elements systematically (Trees)
+- End with comprehensive reconstruction summary (Forest)
+
+=== MANDATORY 15 CATEGORIES (Must Include All) ===
+
+1. **FACE/EXPRESSION** - Eyebrows, eyelids, gaze direction, mouth shape, jaw/cheek tension
+2. **POSE & JOINTS** - Head/neck/torso/waist/pelvis/arms/legs/joint directions
+3. **SKIN** - Tone, sheen, makeup, texture
+4. **CLOTHING (Type)** - Colors, materials, patterns
+5. **CLOTHING (Fit State)** - Wrinkles, tension, stretch, looseness, tightness
+6. **CLOTHING SIZE & LENGTH** - Hem/sleeve/waistline positions only when visible evidence exists
+7. **BODY SILHOUETTE/PROPORTIONS** - Visible body shape and proportions
+8. **ORIENTATION/ANGLES** - Face direction, torso direction, pelvis direction (separately)
+9. **CAMERA/LENS/TECHNIQUE** - Focal length, aperture, angle, effects
+10. **BACKGROUND/LIGHTING/BRIGHTNESS** - Environment, light sources, intensity
+11. **EMOTION/STORY** - Inferred emotional state with confidence level and observational evidence
+12. **INTERACTION** - Contact points, proximity
+13. **INTERACTION DETAILS** - Body parts involved, direction, angle, position, support relationships
+14. **IMPORTANT OBJECTS** - Significant props and environmental objects
+15. **HAIRSTYLE** - Hair color, length, style, texture
+
+=== SPECIAL SECTIONS (End of Report) ===
+
+[REASSEMBLY CONSTRAINTS]
+- Critical unchangeable facts that MUST be preserved in any recreation
+- Physical impossibilities to avoid
+- Key relationships and dependencies
+
+[VISIBILITY SUMMARY]
+- [OUT-OF-FRAME]: (list all)
+
+=== OUTPUT STRUCTURE ===
+Use natural flowing prose organized by the 15 categories.
+Aim for ~70-80% of original analysis length.
+The report should be directly usable as a generation prompt.
+
+=== MANDATORY OUTPUT FORMAT ===
+===REPORT_EN===
+<Compressed English report following all 15 categories + special sections>
+===REPORT_KR===
+<Compressed Korean report - same structure>`;
+  }
+
+  function getReportUserPrompt(analysisText) {
+    return `Compress this detailed technical analysis into an intermediate report.
+
+TARGET: 70~80% of original information density
+
+REQUIREMENTS:
+1. Include ALL 15 mandatory categories
+2. Consolidate Out-of-Frame elements into one section
+3. Omit unsupported details; do not create Unknown or Unknown/Occluded items
+4. Follow Forest→Trees→Forest narrative flow
+5. Add Reassembly Constraints section
+6. Add Visibility Summary section
+7. NO new information - only condense what's provided
+8. Output must be usable as a generation prompt directly
+9. Keep each language block at or below 8,000 characters
+
+=== TECHNICAL ANALYSIS INPUT ===
+${analysisText}
+=== END ANALYSIS ===
+
+Generate the intermediate report now with ===REPORT_EN=== and ===REPORT_KR=== blocks.`;
+  }
+
+  function getPromptSystemPrompt() {
+    return `You are PROMPT_ARCHITECT, converting detailed analyses into generation prompts.
+
+=== TRANSFORMATION RULES ===
+
+[RULE 1] CONSISTENCY
+- Use ONLY information from the provided analysis
+- Add NOTHING new - only rephrase and compress
+
+[RULE 2] NO MATH/TEXT ARTIFACTS - Remove ALL:
+- Mathematical notation (vectors, matrices)
+- Coordinate numbers ([0.3, 0.7])
+- Degree symbols (45°)
+- Raw measurements (unless camera metadata allowed)
+- Formulas or equations
+
+[RULE 3] TRANSFORM NUMBERS TO DESCRIPTIONS:
+- "45° rotation" → "angled halfway between forward and sideways"
+- "Z-depth 0.3" → "positioned in the near foreground"
+- "15cm apart" → "close but not touching, with a small gap"
+- "3:1 lighting ratio" → "moderate contrast with visible fill light"
+
+[RULE 4] PRESERVE ANATOMICAL PRECISION
+- Keep specific body part names
+- Convert technical contact to vivid description:
+  "left distal forearm contacts right anterior deltoid" →
+  "her left forearm rests against his shoulder"
+
+[RULE 5] INTENSITY DESCRIPTIONS (from 7.txt)
+- Instead of math symbols, use: "zero-gap contact", "intimate skin-to-skin pressure"
+- For proximity: "bodies nearly merged", "hovering just inches apart"
+
+[RULE 6] NEGATIVE INSTRUCTION
+Include: "no text, no labels, no watermarks, no UI elements, no diagrams, no overlays"
+
+[RULE 7] PROMPT STRUCTURE (from 5.txt)
+Start with visual composition and mood:
+"A high-fidelity cinematic shot, [lighting quality], [mood], [then physical details]..."
+
+=== MANDATORY OUTPUT FORMAT ===
+===PROMPT_EN===
+<English prompt - vivid, descriptive, no formulas/coordinates>
+===PROMPT_KR===
+<Korean prompt - same content translated>
+
+Each language block must be at or below 8,000 characters.`;
+  }
+
+  function getPromptUserPrompt(analysisText, cameraMetaMode) {
+    const cameraRule = cameraMetaMode === 'none'
+      ? 'Camera settings: OMIT entirely.'
+      : cameraMetaMode === 'spelled'
+        ? 'Camera settings: spell out with words if included.'
+        : 'Camera settings: numeric format allowed.';
+
+    return `Convert this analysis into an image generation prompt.
+
+REQUIREMENTS:
+1. Use REASSEMBLY CHECK as backbone
+2. Add essential pose/contact/spatial details for faithful reconstruction
+3. REMOVE all coordinates, vectors, degree symbols, formulas
+4. TRANSFORM measurements into descriptive phrases
+5. PRESERVE anatomical precision but make it readable
+6. Include negative instruction (no text/labels/watermarks)
+7. Start with visual composition and mood
+8. Use intensity descriptors for proximity/contact
+
+${cameraRule}
+
+=== ANALYSIS INPUT ===
+${analysisText}
+=== END ANALYSIS ===
+
+Generate prompts now with ===PROMPT_EN=== and ===PROMPT_KR=== blocks.`;
+  }
+
+  // ==================== CODEX FULL HARNESS ====================
+  const EVIDENCE_SCHEMA = {
+    type: 'object',
+    properties: {
+      overview_en: { type: 'string' },
+      overview_kr: { type: 'string' },
+      sections: {
+        type: 'array',
+        minItems: 18,
+        maxItems: 18,
+        items: {
+          type: 'object',
+          properties: {
+            number: { type: 'integer', minimum: 1, maximum: 18 },
+            title: { type: 'string' },
+            observed_en: { type: 'string' },
+            observed_kr: { type: 'string' },
+            estimated_en: { type: 'string' },
+            estimated_kr: { type: 'string' },
+            unknown_en: { type: 'string' },
+            unknown_kr: { type: 'string' }
+          },
+          required: ['number', 'title', 'observed_en', 'observed_kr', 'estimated_en', 'estimated_kr', 'unknown_en', 'unknown_kr'],
+          additionalProperties: false
+        }
+      },
+      reassembly_en: { type: 'string' },
+      reassembly_kr: { type: 'string' }
+    },
+    required: ['overview_en', 'overview_kr', 'sections', 'reassembly_en', 'reassembly_kr'],
+    additionalProperties: false
+  };
+
+  const DRAFT_SCHEMA = {
+    type: 'object',
+    properties: {
+      analysis_en: { type: 'string', maxLength: 8000 },
+      analysis_kr: { type: 'string', maxLength: 8000 },
+      report_en: { type: 'string', maxLength: 8000 },
+      report_kr: { type: 'string', maxLength: 8000 }
+    },
+    required: ['analysis_en', 'analysis_kr', 'report_en', 'report_kr'],
+    additionalProperties: false
+  };
+
+  const FINAL_SCHEMA = {
+    type: 'object',
+    properties: {
+      analysis_en: { type: 'string', maxLength: 8000 },
+      analysis_kr: { type: 'string', maxLength: 8000 },
+      report_en: { type: 'string', maxLength: 8000 },
+      report_kr: { type: 'string', maxLength: 8000 },
+      prompt_en: { type: 'string', maxLength: 8000 },
+      prompt_kr: { type: 'string', maxLength: 8000 },
+      audit_notes: { type: 'array', items: { type: 'string' } }
+    },
+    required: ['analysis_en', 'analysis_kr', 'report_en', 'report_kr', 'prompt_en', 'prompt_kr', 'audit_notes'],
+    additionalProperties: false
+  };
+
+  function getEvidenceSystemPrompt() {
+    const base = getAnalysisSystemPrompt().replace(
+      /=== MANDATORY OUTPUT FORMAT ===[\s\S]*?=== REQUIRED 18-SECTION ANALYSIS STRUCTURE ===/,
+      '=== REQUIRED 18-SECTION ANALYSIS STRUCTURE ==='
+    );
+    return `${base}
+
+EVIDENCE LEDGER RULES:
+- Separate directly observed facts, visual estimates, and unknown/occluded details.
+- Complete exactly eighteen section records, numbered one through eighteen with no duplicates.
+- An estimate must include its visible basis. If there is no basis, move it to unknown.
+- Do not turn an estimate into an observed fact.
+- The response schema controls the JSON output; do not add markdown or delimiter blocks.`;
+  }
+
+  function getEvidenceUserPrompt(cameraMetaMode) {
+    const cameraRule = cameraMetaMode === 'none'
+      ? 'Do not infer or preserve camera settings for later prompt generation.'
+      : cameraMetaMode === 'spelled'
+        ? 'Camera estimates may be stated, but later wording must spell numbers out.'
+        : 'Camera estimates may use numeric notation when visibly supportable.';
+    return `Inspect the attached image and build a bilingual evidence ledger for all eighteen required analysis sections.
+
+${cameraRule}
+
+Use code execution only if Agentic Vision is enabled and it materially helps inspect the actual image. Record unsupported or hidden details as unknown rather than inventing them.`;
+  }
+
+  function getSynthesisSystemPrompt() {
+    return `You are a bilingual visual-analysis synthesizer. Convert a validated evidence ledger into:
+1. A complete English technical analysis with exactly eighteen numbered sections.
+2. A Korean technical analysis with the same eighteen numbered sections.
+3. An English intermediate report containing the original fifteen categories plus Reassembly Constraints and Visibility Summary.
+4. A Korean intermediate report with the same structure.
+
+Use only the supplied evidence. Preserve the boundary between observed facts and supported estimates. Omit unsupported details from the visible analysis and report instead of printing Unknown or Unknown/Occluded items. Do not introduce new measurements, anatomy, motives, objects, camera settings, or physical contacts. Keep every language field at or below 8,000 characters. The response schema controls JSON output.`;
+  }
+
+  function getSynthesisUserPrompt(evidence) {
+    return `Create the complete analysis and intermediate report from this evidence ledger:\n\n${JSON.stringify(evidence)}`;
+  }
+
+  function getAuditSystemPrompt() {
+    return `You are the final visual audit and prompt architect. Compare the attached image against the evidence ledger and draft outputs.
+
+- Correct unsupported claims, visible contradictions, omissions, and mistranslations.
+- Keep exactly eighteen numbered sections in both final analyses.
+- Preserve the fifteen-category intermediate report structure.
+- Produce a faithful generation prompt in English and Korean.
+- Convert measurements into natural visual language in prompts unless camera metadata is explicitly allowed.
+- End prompts with: no text, no labels, no watermarks, no UI elements, no diagrams, no overlays.
+- Do not add detail merely to make the writing richer.
+- Omit unsupported details from visible outputs instead of printing Unknown or Unknown/Occluded items.
+- Keep each analysis, report, and prompt language field at or below 8,000 characters.
+- audit_notes must list only corrections actually made; use an empty array if none.
+- The response schema controls JSON output.`;
+  }
+
+  function getAuditUserPrompt(evidence, draft, cameraMetaMode) {
+    const cameraRule = cameraMetaMode === 'none'
+      ? 'Omit camera settings from both generation prompts.'
+      : cameraMetaMode === 'spelled'
+        ? 'Spell camera numbers out in generation prompts.'
+        : 'Numeric camera notation is allowed in generation prompts.';
+    return `${cameraRule}
+
+=== EVIDENCE LEDGER ===
+${JSON.stringify(evidence)}
+=== DRAFT OUTPUTS ===
+${JSON.stringify(draft)}`;
+  }
+
+  function parseStructuredResponse(response, label) {
+    const text = extractText(response);
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`${label} returned invalid structured JSON.`);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`${label} returned an invalid structured object.`);
+    }
+    return parsed;
+  }
+
+  function validateEvidence(evidence) {
+    if (!Array.isArray(evidence.sections) || evidence.sections.length !== 18) {
+      throw new Error('Evidence ledger must contain exactly 18 sections.');
+    }
+    const numbers = new Set(evidence.sections.map(section => Number(section.number)));
+    const missing = [];
+    for (let i = 1; i <= 18; i++) if (!numbers.has(i)) missing.push(i);
+    if (missing.length || numbers.size !== 18) {
+      throw new Error(`Evidence ledger section numbering is invalid. Missing: ${missing.join(', ') || 'duplicate number'}`);
+    }
+  }
+
+  function combinedOutputBudget(modelId, ...parts) {
+    const requested = parts.reduce((sum, value) => sum + Number(value || 0), 0);
+    const modelCap = Number(MODEL_META[normalizeModelId(modelId)]?.outputTokenLimit || 0);
+    return modelCap > 0 ? Math.min(requested, modelCap) : requested;
+  }
+
+  // Gemini API
+  const SAFETY_SETTINGS = [
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'OFF' }
+  ];
+  const MAX_AUTOMATIC_RETRIES = 2;
+  const MAX_LANGUAGE_CHARS = 8000;
+
+
+  // (MODEL_CACHE_KEY and MODEL_META are declared near SETTINGS_KEY above)
+
+  function loadModelMetaCache() {
+    try {
+      const raw = localStorage.getItem(MODEL_CACHE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') MODEL_META = parsed;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function saveModelMetaCache() {
+    try {
+      localStorage.setItem(MODEL_CACHE_KEY, JSON.stringify(MODEL_META));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function modelSortKey(id) {
+    const m = normalizeModelId(id);
+    const exact = DEFAULT_ANALYSIS_MODELS.indexOf(m);
+    if (exact !== -1) return String(exact).padStart(3, '0') + '_' + m;
+    if (m.includes('pro')) return '050_' + m;
+    if (m.includes('flash')) return '060_' + m;
+    return '999_' + m;
+  }
+
+  function isAnalysisModel(modelId, suppliedMeta = null) {
+    const id = normalizeModelId(modelId);
+    if (!id.startsWith('gemini-')) return false;
+    if (/(embedding|image|tts|live|audio|omni|robotics)/i.test(id)) return false;
+    const meta = suppliedMeta || MODEL_META[id];
+    const methods = Array.isArray(meta?.supportedGenerationMethods)
+      ? meta.supportedGenerationMethods
+      : [];
+    return methods.length === 0 || methods.includes('generateContent');
+  }
+
+  function populateModelSelect(modelIds, keepSelection = true) {
+    const sel = $('model');
+    const current = sel.value;
+    sel.innerHTML = '';
+
+    [...new Set(modelIds)]
+      .map(normalizeModelId)
+      .filter(isAnalysisModel)
+      .forEach((id) => {
+        const meta = MODEL_META[id];
+        const label = meta?.displayName
+          ? `${id} — ${meta.displayName}`
+          : id;
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      });
+
+    if (keepSelection && [...sel.options].some(opt => opt.value === current)) {
+      sel.value = current;
+    } else if ([...sel.options].some(opt => opt.value === DEFAULT_MODEL)) {
+      sel.value = DEFAULT_MODEL;
+    }
+  }
+
+  function applyModelCaps(modelId) {
+    const id = normalizeModelId(modelId);
+    const meta = MODEL_META[id];
+    const cap = Number(meta?.outputTokenLimit || 0);
+    if (!cap || !isFinite(cap)) return;
+
+    // Clamp per-step outputs to model outputTokenLimit
+    ['maxTokensAnalysis', 'maxTokensReport', 'maxTokensPrompt'].forEach((inpId) => {
+      const el = $(inpId);
+      el.max = String(cap);
+      const v = Number(el.value);
+      if (v > cap) el.value = String(cap);
+    });
+  }
+
+  function maybeWarnThinkingLimits(modelId, thinkingMode) {
+    const id = normalizeModelId(modelId);
+    const mode = String(thinkingMode || 'auto').toLowerCase();
+
+    if (id.includes('pro') && mode === 'off') {
+      toast('Pro models cannot fully disable thinking. Off will use Low.');
+    }
+  }
+
+  async function refreshModelList() {
+    const apiKey = $('apiKey').value.trim();
+    if (!apiKey) {
+      toast('Set API Key first, then refresh models.');
+      return;
+    }
+
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+    const fetchPage = async (pageToken = '') => {
+      const u = new URL(endpoint);
+      u.searchParams.set('pageSize', '1000');
+      if (pageToken) u.searchParams.set('pageToken', pageToken);
+      const res = await fetch(u, {
+        method: 'GET',
+        headers: { 'x-goog-api-key': apiKey }
+      });
+      const txt = await res.text();
+      if (!res.ok) throw new Error(`Model list error (${res.status}): ${txt}`);
+      return JSON.parse(txt);
+    };
+
+    try {
+      const models = [];
+      let pageToken = '';
+      do {
+        const data = await fetchPage(pageToken);
+        if (Array.isArray(data?.models)) models.push(...data.models);
+        pageToken = data?.nextPageToken || '';
+      } while (pageToken);
+
+      const meta = {};
+      const ids = [];
+
+      for (const m of models) {
+        const id = normalizeModelId(m?.name);
+        if (!id) continue;
+        const itemMeta = {
+          displayName: m?.displayName || '',
+          inputTokenLimit: m?.inputTokenLimit ?? null,
+          outputTokenLimit: m?.outputTokenLimit ?? null,
+          supportedGenerationMethods: m?.supportedGenerationMethods ?? []
+        };
+        if (!isAnalysisModel(id, itemMeta)) continue;
+        meta[id] = itemMeta;
+        ids.push(id);
+      }
+
+      MODEL_META = meta;
+      saveModelMetaCache();
+
+      const availableIds = [...new Set([...DEFAULT_ANALYSIS_MODELS, ...ids])];
+      availableIds.sort((a, b) => modelSortKey(a).localeCompare(modelSortKey(b)));
+      if (availableIds.length) {
+        populateModelSelect(availableIds, true);
+        applyModelCaps($('customModel').value.trim() || $('model').value);
+        syncModelControls();
+        toast(`Loaded ${ids.length} compatible Gemini models.`);
+      } else {
+        toast('No compatible Gemini analysis models found for this key/project.');
+      }
+    } catch (e) {
+      toast(String(e?.message || e));
+    }
+  }
+
+  function normalizeModelId(model) {
+    return String(model || '').trim().replace(/^models\//, '');
+  }
+
+  function buildThinkingConfig(modelId, thinkingMode, forceHigh = false) {
+    const id = normalizeModelId(modelId);
+    const mode = forceHigh ? 'high' : String(thinkingMode || 'auto').toLowerCase();
+    if (mode === 'auto') return null;
+
+    if (id.startsWith('gemini-2.5')) {
+      const budgetByMode = { off: 0, low: 1024, medium: 4096, high: 8192 };
+      let thinkingBudget = budgetByMode[mode];
+      if (!Number.isFinite(thinkingBudget)) return null;
+      if (thinkingBudget === 0 && id.includes('pro')) thinkingBudget = 128;
+      return { thinkingBudget };
+    }
+
+    if (!isGemini3OrLater(id)) return null;
+
+    if (id.includes('pro')) {
+      if (mode === 'high') return { thinkingLevel: 'high' };
+      if (mode === 'medium' && !/^gemini-3-pro-preview/.test(id)) return { thinkingLevel: 'medium' };
+      return { thinkingLevel: 'low' };
+    }
+    if (mode === 'off') return { thinkingLevel: 'minimal' };
+    return ['low', 'medium', 'high'].includes(mode) ? { thinkingLevel: mode } : null;
+  }
+
+  function isGemini3OrLater(modelId) {
+    const id = normalizeModelId(modelId);
+    if (['gemini-pro-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'].includes(id)) return true;
+    const version = id.match(/^gemini-(\d+)(?:[.-]|$)/);
+    return Boolean(version && Number(version[1]) >= 3);
+  }
+
+  function normalizeGenerateContentResponse(response, requestedModel) {
+    const candidate = Array.isArray(response?.candidates) ? response.candidates[0] : null;
+    const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+    const steps = [];
+    const textContent = [];
+    let codeCallCount = 0;
+    let codeResultCount = 0;
+
+    for (const part of parts) {
+      if (typeof part?.text === 'string' && part.thought !== true) {
+        textContent.push({ type: 'text', text: part.text });
+      }
+      if (part?.executableCode) {
+        codeCallCount += 1;
+        steps.push({
+          type: 'code_execution_call',
+          id: String(part.executableCode.id || `code-${codeCallCount}`),
+          arguments: {
+            language: String(part.executableCode.language || 'python').toLowerCase(),
+            code: String(part.executableCode.code || '')
+          }
+        });
+      }
+      if (part?.codeExecutionResult) {
+        codeResultCount += 1;
+        const outcome = String(part.codeExecutionResult.outcome || '');
+        steps.push({
+          type: 'code_execution_result',
+          call_id: String(part.codeExecutionResult.id || `code-${codeResultCount}`),
+          is_error: outcome !== 'OUTCOME_OK',
+          result: String(part.codeExecutionResult.output || '')
+        });
+      }
+    }
+
+    if (textContent.length) steps.push({ type: 'model_output', content: textContent });
+
+    const usage = response?.usageMetadata || {};
+    return {
+      status: candidate?.finishReason === 'STOP' ? 'completed' : 'failed',
+      model: response?.modelVersion || requestedModel,
+      response_id: response?.responseId || '',
+      steps,
+      usage: {
+        total_input_tokens: Number(usage.promptTokenCount || 0),
+        total_output_tokens: Number(usage.candidatesTokenCount || 0),
+        total_thought_tokens: Number(usage.thoughtsTokenCount || 0),
+        total_tool_use_tokens: Number(usage.toolUsePromptTokenCount || 0),
+        total_tokens: Number(usage.totalTokenCount || 0),
+        total_cached_tokens: Number(usage.cachedContentTokenCount || 0)
+      },
+      prompt_feedback: response?.promptFeedback || null,
+      finish_reason: candidate?.finishReason || '',
+      finish_message: candidate?.finishMessage || '',
+      safety_ratings: candidate?.safetyRatings || [],
+      raw_response: response
+    };
+  }
+
+  function describeGenerateContentFailure(response) {
+    const blockReason = response?.promptFeedback?.blockReason;
+    const blockMessage = response?.promptFeedback?.blockReasonMessage;
+    if (blockReason) return `Prompt blocked (${blockReason})${blockMessage ? `: ${blockMessage}` : ''}`;
+
+    const candidate = Array.isArray(response?.candidates) ? response.candidates[0] : null;
+    if (!candidate) return 'GenerateContent returned no candidates.';
+
+    const finishReason = candidate?.finishReason || 'UNKNOWN';
+    const finishMessage = candidate?.finishMessage || '';
+    if (finishReason !== 'STOP') {
+      return `Generation stopped (${finishReason})${finishMessage ? `: ${finishMessage}` : ''}`;
+    }
+    return '';
+  }
+
+  async function callGemini({ apiKey, model, maxTokens, thinkingLevel, systemPrompt, userPrompt, imageMime, imageBase64, agenticVision = false, responseSchema = null, signal, attemptNumber = 0 }) {
+    const modelId = normalizeModelId(model);
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`;
+    const parts = [];
+    if (imageBase64 && imageMime) {
+      const imagePart = {
+        inlineData: {
+          mimeType: imageMime,
+          data: imageBase64
+        }
+      };
+      if (isGemini3OrLater(modelId)) {
+        imagePart.mediaResolution = { level: 'media_resolution_high' };
+      }
+      parts.push(imagePart);
+    }
+    const agenticInstruction = agenticVision
+      ? '\n\nAGENTIC VISION: Use Python code execution only when it materially improves visual inspection, such as zooming, cropping, rotating, counting, or calculating. Base the final answer on successful execution results; do not claim tool use if no code ran.'
+      : '';
+    parts.push({ text: userPrompt + agenticInstruction });
+
+    const body = {
+      contents: [{ role: 'user', parts }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        maxOutputTokens: Number(maxTokens)
+      },
+      safetySettings: SAFETY_SETTINGS,
+      store: false
+    };
+
+    const thinkingConfig = buildThinkingConfig(modelId, thinkingLevel, agenticVision);
+    if (thinkingConfig) {
+      body.generationConfig.thinkingConfig = thinkingConfig;
+    }
+    if (agenticVision) {
+      body.tools = [{ codeExecution: {} }];
+    }
+    if (responseSchema) {
+      if (isGemini3OrLater(modelId)) {
+        body.generationConfig.responseFormat = {
+          text: { mimeType: 'APPLICATION_JSON', schema: responseSchema }
+        };
+      } else {
+        body.generationConfig.responseMimeType = 'application/json';
+        body.generationConfig.responseSchema = responseSchema;
+      }
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+    };
+
+    const startedAt = performance.now();
+
+    const doFetch = async () => {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal
+      });
+      const txt = await res.text();
+      return { res, txt };
+    };
+
+    let res;
+    let txt;
+    try {
+      ({ res, txt } = await doFetch());
+    } catch (cause) {
+      if (cause?.name === 'AbortError') throw cause;
+      const error = new Error(`Network error: ${cause?.message || String(cause)}`);
+      error.__codexMeta = makeInteractionMeta(null, modelId, agenticVision, startedAt, attemptNumber, null, error.message);
+      error.__autoRetryable = true;
+      throw error;
+    }
+
+    if (!res.ok) {
+      let payload = null;
+      try { payload = JSON.parse(txt); } catch (e) { /* plain-text error */ }
+      const reason = payload?.error?.message || txt.slice(0, 2000) || 'Unknown API error';
+      const error = new Error(`API Error (${res.status}): ${reason}`);
+      error.__codexMeta = makeInteractionMeta(payload, modelId, agenticVision, startedAt, attemptNumber, res.status, reason);
+      error.__autoRetryable = [408, 429, 500, 502, 503, 504].includes(res.status);
+      throw error;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(txt);
+    } catch (e) {
+      const error = new Error('API returned invalid JSON.');
+      error.__codexMeta = makeInteractionMeta(null, modelId, agenticVision, startedAt, attemptNumber, res.status, error.message);
+      error.__autoRetryable = true;
+      throw error;
+    }
+    const normalized = normalizeGenerateContentResponse(data, modelId);
+    const failure = describeGenerateContentFailure(data);
+    if (failure) {
+      const error = new Error(failure);
+      error.__codexMeta = makeInteractionMeta(normalized, modelId, agenticVision, startedAt, attemptNumber, res.status, failure);
+      error.__autoRetryable = true;
+      throw error;
+    }
+    const outputText = extractText(normalized);
+    if (!outputText.trim()) {
+      const error = new Error('GenerateContent completed without a final text output.');
+      error.__codexMeta = makeInteractionMeta(normalized, modelId, agenticVision, startedAt, attemptNumber, res.status, error.message);
+      error.__autoRetryable = true;
+      throw error;
+    }
+
+    normalized.__codexMeta = makeInteractionMeta(normalized, modelId, agenticVision, startedAt, attemptNumber, res.status, '');
+    return normalized;
+  }
+
+  function validateLanguageText(label, value, { forbidUnknown = false } = {}) {
+    const text = String(value || '').trim();
+    if (!text) {
+      const error = new Error(`${label} is empty.`);
+      error.__autoRetryable = true;
+      throw error;
+    }
+    const length = Array.from(text).length;
+    if (length > MAX_LANGUAGE_CHARS) {
+      const error = new Error(`${label} exceeds ${MAX_LANGUAGE_CHARS} characters (${length}).`);
+      error.__autoRetryable = true;
+      throw error;
+    }
+    const unknownOutputItem = /(?:^|\n)\s*(?:[-*•]\s*)?(?:\*\*)?unknown(?:\s*\/\s*occluded)?(?:\*\*)?\s*(?::|[-–—]|$)/im;
+    if (forbidUnknown && unknownOutputItem.test(text)) {
+      const error = new Error(`${label} contains an Unknown output item.`);
+      error.__autoRetryable = true;
+      throw error;
+    }
+    return text;
+  }
+
+  function attachResponseMeta(error, response) {
+    if (!error.__codexMeta && response?.__codexMeta) {
+      error.__codexMeta = { ...response.__codexMeta, failureReason: error.message || String(error) };
+    }
+    if (error.__autoRetryable === undefined) error.__autoRetryable = true;
+    return error;
+  }
+
+  function extractText(response) {
+    const outputs = (Array.isArray(response?.steps) ? response.steps : [])
+      .filter(step => step?.type === 'model_output' && !step?.error)
+      .map(step => (Array.isArray(step.content) ? step.content : [])
+        .filter(part => part?.type === 'text')
+        .map(part => part.text || '')
+        .join(''))
+      .filter(text => text.trim());
+    return outputs.length ? outputs[outputs.length - 1] : '';
+  }
+
+  function inspectAgenticVision(response) {
+    const steps = Array.isArray(response?.steps) ? response.steps : [];
+    const calls = steps.filter(step => step?.type === 'code_execution_call');
+    const results = steps.filter(step => step?.type === 'code_execution_result');
+    if (!calls.length && !results.length) return 'NOT_USED';
+    if (!results.length || results.some(step => step?.is_error === true)) return 'USED_FAILED';
+    return 'USED_OK';
+  }
+
+  function aggregateAgenticVisionState(metrics) {
+    const states = metrics.filter(item => item.agenticRequested).map(item => item.agenticVision);
+    if (states.includes('USED_FAILED')) return 'USED_FAILED';
+    if (states.includes('USED_OK')) return 'USED_OK';
+    return 'NOT_USED';
+  }
+
+  const PRICING_BASIS = 'Google Gemini Developer API Standard paid pricing, 2026-07-21';
+
+  function clipTelemetry(value, limit = 8000) {
+    const text = String(value ?? '');
+    return text.length > limit ? `${text.slice(0, limit)}\n...[truncated ${text.length - limit} chars]` : text;
+  }
+
+  function normalizeUsage(usage) {
+    return {
+      inputTokens: Number(usage?.total_input_tokens || 0),
+      outputTokens: Number(usage?.total_output_tokens || 0),
+      thoughtTokens: Number(usage?.total_thought_tokens || 0),
+      toolUseTokens: Number(usage?.total_tool_use_tokens || 0),
+      totalTokens: Number(usage?.total_tokens || 0),
+      cachedTokens: Number(usage?.total_cached_tokens || 0)
+    };
+  }
+
+  function getStandardPricing(modelId, inputTokens) {
+    const id = normalizeModelId(modelId);
+    const long = inputTokens > 200000;
+    if (id === 'gemini-pro-latest' || id === 'gemini-3.1-pro-preview' || id === 'gemini-3.1-pro-preview-customtools') {
+      return { inputRate: long ? 4 : 2, outputRate: long ? 18 : 12, label: 'Gemini 3.1 Pro Preview / Pro Latest' };
+    }
+    if (id === 'gemini-3.6-flash' || id === 'gemini-flash-latest') return { inputRate: 1.5, outputRate: 7.5, label: 'Gemini 3.6 Flash / Flash Latest' };
+    if (id === 'gemini-3.5-flash') return { inputRate: 1.5, outputRate: 9, label: 'Gemini 3.5 Flash' };
+    if (id === 'gemini-3.5-flash-lite' || id === 'gemini-flash-lite-latest') return { inputRate: 0.3, outputRate: 2.5, label: 'Gemini 3.5 Flash-Lite / Flash-Lite Latest' };
+    if (id === 'gemini-3.1-flash-lite') return { inputRate: 0.25, outputRate: 1.5, label: 'Gemini 3.1 Flash-Lite' };
+    if (id === 'gemini-2.5-pro') return { inputRate: long ? 2.5 : 1.25, outputRate: long ? 15 : 10, label: 'Gemini 2.5 Pro' };
+    if (id === 'gemini-2.5-flash') return { inputRate: 0.3, outputRate: 2.5, label: 'Gemini 2.5 Flash' };
+    if (id === 'gemini-2.5-flash-lite') return { inputRate: 0.1, outputRate: 0.4, label: 'Gemini 2.5 Flash-Lite' };
+    return null;
+  }
+
+  function estimateInteractionCost(modelId, usage) {
+    const tokens = normalizeUsage(usage);
+    const pricing = getStandardPricing(modelId, tokens.inputTokens);
+    if (!pricing) return { pricingKnown: false, estimatedCostUSD: null, agenticToolCostUSD: null, tokens };
+    const billedOutputTokens = tokens.outputTokens + tokens.thoughtTokens;
+    return {
+      pricingKnown: true,
+      pricingLabel: pricing.label,
+      inputRate: pricing.inputRate,
+      outputRate: pricing.outputRate,
+      estimatedCostUSD: (tokens.inputTokens * pricing.inputRate + billedOutputTokens * pricing.outputRate) / 1000000,
+      agenticToolCostUSD: null,
+      tokens
+    };
+  }
+
+  function describeVisionOperations(code) {
+    const operations = [];
+    if (/crop\s*\(|\[[^\]]*:[^\]]*\]/i.test(code)) operations.push('crop/zoom');
+    if (/resize\s*\(|resiz/i.test(code)) operations.push('resize');
+    if (/rotate\s*\(|warpAffine|transpose/i.test(code)) operations.push('rotate/orient');
+    if (/threshold|canny|edge|sharpen|contrast|equalize/i.test(code)) operations.push('detail enhancement');
+    if (/count|connectedComponents|findContours|len\s*\(/i.test(code)) operations.push('count/measure');
+    if (/ocr|pytesseract|text/i.test(code)) operations.push('text inspection');
+    return operations.length ? [...new Set(operations)].join(', ') : 'Python visual inspection';
+  }
+
+  function describeVisionTarget(code) {
+    const labels = [
+      ['face', 'face'], ['eye', 'eyes'], ['hand', 'hands'], ['finger', 'fingers'],
+      ['hair', 'hair'], ['cloth', 'clothing'], ['text', 'text'], ['background', 'background'],
+      ['object', 'object'], ['gauge', 'gauge'], ['pedal', 'pedals']
+    ];
+    const found = labels.filter(([needle]) => new RegExp(`\\b${needle}`, 'i').test(code)).map(([, label]) => label);
+    const crop = code.match(/crop\s*\(([^\n]{1,160})\)/i);
+    if (found.length) return [...new Set(found)].join(', ');
+    if (crop) return `crop region: ${crop[1].trim()}`;
+    return 'Target not named in code; see raw code';
+  }
+
+  function collectAgenticVisionTrace(response) {
+    const steps = Array.isArray(response?.steps) ? response.steps : [];
+    const calls = steps.filter(step => step?.type === 'code_execution_call');
+    const results = steps.filter(step => step?.type === 'code_execution_result');
+    return calls.map((call, index) => {
+      const result = results.find(item => item?.call_id === call?.id) || results[index] || null;
+      const code = String(call?.arguments?.code || call?.code || '');
+      return {
+        inspection: index + 1,
+        callId: call?.id || '',
+        language: call?.arguments?.language || call?.language || 'python',
+        target: describeVisionTarget(code),
+        operation: describeVisionOperations(code),
+        success: Boolean(result) && result?.is_error !== true,
+        code: clipTelemetry(code),
+        result: clipTelemetry(result?.result || result?.output || (result ? '(no text result)' : '(no matching result)'))
+      };
+    });
+  }
+
+  function makeInteractionMeta(response, requestedModel, agenticRequested, startedAt, retryCount, httpStatus, failureReason) {
+    const resolvedModel = normalizeModelId(response?.model || requestedModel);
+    const trace = collectAgenticVisionTrace(response);
+    const cost = estimateInteractionCost(resolvedModel, response?.usage);
+    return {
+      requestedModel: normalizeModelId(requestedModel),
+      resolvedModel,
+      elapsedMs: Math.round(performance.now() - startedAt),
+      retryCount,
+      httpStatus: httpStatus || null,
+      failureReason: failureReason || '',
+      agenticRequested,
+      agenticVision: inspectAgenticVision(response),
+      agenticTrace: trace,
+      analysisAfterAgentic: trace.length ? clipTelemetry(extractText(response), 12000) : '',
+      usage: response?.usage || null,
+      ...cost
+    };
+  }
+
+  function formatUSD(value, language = 'kr') {
+    return Number.isFinite(value) ? `$${value.toFixed(6)}` : (language === 'en' ? 'unavailable' : '계산 불가');
+  }
+
+  function formatDuration(ms, language = 'kr') {
+    const seconds = (Math.max(0, Number(ms) || 0) / 1000).toFixed(2);
+    return language === 'en' ? `${seconds}s` : `${seconds}초`;
+  }
+
+  function buildRunReport({ status, fileName, selectedModel, agenticRequested, agenticState, startedAt, endedAt, metrics, failureReason, analysisResult }) {
+    const actualModels = [...new Set(metrics.map(item => item.resolvedModel || item.model).filter(Boolean))];
+    const traces = metrics.flatMap(item => (item.agenticTrace || []).map(trace => ({ step: item.step, ...trace })));
+    const usage = metrics.reduce((sum, item) => {
+      const tokens = item.tokens || normalizeUsage(item.usage);
+      Object.keys(sum).forEach(key => { sum[key] += Number(tokens[key] || 0); });
+      return sum;
+    }, { inputTokens: 0, outputTokens: 0, thoughtTokens: 0, toolUseTokens: 0, totalTokens: 0, cachedTokens: 0 });
+    const priced = metrics.filter(item => Number.isFinite(item.estimatedCostUSD));
+    const allPriced = metrics.length > 0 && priced.length === metrics.length;
+    const totalCostUSD = allPriced ? priced.reduce((sum, item) => sum + item.estimatedCostUSD, 0) : null;
+    const avMetrics = metrics.filter(item => item.agenticRequested);
+    const avStageCostUSD = avMetrics.length && avMetrics.every(item => Number.isFinite(item.estimatedCostUSD))
+      ? avMetrics.reduce((sum, item) => sum + item.estimatedCostUSD, 0)
+      : null;
+    const avToolCostUSD = null;
+    const durationMs = metrics.length
+      ? metrics.reduce((sum, item) => sum + Math.max(0, Number(item.elapsedMs) || 0), 0)
+      : Math.max(0, endedAt - startedAt);
+    const resultByLanguage = {
+      en: String(analysisResult?.en || ''),
+      kr: String(analysisResult?.kr || '')
+    };
+
+    const makeText = (language) => {
+      const en = language === 'en';
+      const lines = [
+        en ? '=== EXECUTION REPORT ===' : '=== 실행 리포트 ===',
+        `${en ? 'Status' : '상태'}: ${status}`,
+        `${en ? 'File' : '파일'}: ${fileName}`,
+        `${en ? 'Selected model' : '선택 모델'}: ${selectedModel}`,
+        `${en ? 'API response model' : 'API 응답 모델'}: ${actualModels.join(', ') || (en ? 'Failed before response' : '응답 전 실패')}`,
+        `${en ? 'Analysis time' : '분석 시간'}: ${formatDuration(durationMs, language)}`,
+        `${en ? 'Agentic Vision requested' : 'Agentic Vision 요청'}: ${agenticRequested ? (en ? 'Yes' : '예') : (en ? 'No' : '아니오')}`,
+        `${en ? 'Agentic Vision actual state' : 'Agentic Vision 실제 상태'}: ${agenticRequested ? agenticState : 'OFF'}`,
+        `${en ? 'Agentic Vision executions' : 'Agentic Vision 실제 실행 횟수'}: ${traces.length}${en ? '' : '회'}`,
+        '',
+        en ? '=== COST AND TOKENS ===' : '=== 비용 및 토큰 ===',
+        `${en ? 'Pricing basis' : '가격 기준'}: ${PRICING_BASIS}`,
+        en
+          ? 'Note: Estimated using standard paid rates; actual charges may differ with free tier, contracts, caching, or rounding.'
+          : '주의: 표준 유료 단가 기준 예상치이며 무료 티어/계약/캐시 적용 시 실제 청구액과 다를 수 있습니다.',
+        `${en ? 'Total estimated cost' : '총 예상 비용'}: ${formatUSD(totalCostUSD, language)}`,
+        `${en ? 'Agentic Vision tool fee' : 'Agentic Vision 별도 도구 이용료'}: $0.000000${agenticRequested ? '' : (en ? ' (not used)' : ' (미사용)')}`,
+        en
+          ? 'Agentic Vision incremental token cost: unavailable (the API does not isolate AV-only token increases)'
+          : 'Agentic Vision 증분 토큰 비용: 계산 불가 (API 사용량에서 AV로 늘어난 토큰만 분리되지 않음)',
+        `${en ? 'Estimated cost of AV-enabled stages' : 'Agentic Vision 활성 단계 전체 예상 비용'}: ${formatUSD(avStageCostUSD, language)}${en ? ' (includes normal analysis)' : ' (일반 분석 비용 포함)'}`,
+        `${en ? 'Tokens' : '토큰'}: input ${usage.inputTokens}, output ${usage.outputTokens}, thinking ${usage.thoughtTokens}, tool ${usage.toolUseTokens}, total ${usage.totalTokens}`,
+        '',
+        en ? '=== PROCESSING BY ATTEMPT ===' : '=== 시도별 처리 ==='
+      ];
+      if (!metrics.length) lines.push(en ? '- No API response metrics' : '- API 응답 메트릭 없음');
+      metrics.forEach(item => {
+        const tokens = item.tokens || normalizeUsage(item.usage);
+        const attempt = Number(item.retryCount || 0) + 1;
+        lines.push(`- ${item.step}: attempt=${attempt}, model=${item.resolvedModel || item.model || selectedModel}, pricing=${item.pricingLabel || 'unknown'}, time=${formatDuration(item.elapsedMs, language)}, HTTP=${item.httpStatus || 'n/a'}, tokens=${tokens.totalTokens}, cost=${formatUSD(item.estimatedCostUSD, language)}`);
+        if (item.failureReason) lines.push(`  ${en ? 'Failure reason' : '실패 이유'}: ${item.failureReason}`);
+      });
+      lines.push('', en ? '=== AGENTIC VISION INSPECTIONS ===' : '=== Agentic Vision 실제 조사 ===');
+      if (!agenticRequested) {
+        lines.push(en ? 'Agentic Vision was not selected.' : 'Agentic Vision을 선택하지 않았습니다.');
+      } else if (!traces.length) {
+        lines.push(en
+          ? 'No code-execution step was confirmed. The model did not use the tool or stopped before execution.'
+          : '코드 실행 단계가 확인되지 않았습니다. 모델이 도구를 사용하지 않았거나 실행 전에 거절/오류가 발생했습니다.');
+      } else {
+        traces.forEach((trace, index) => {
+          lines.push('', `[${en ? 'Inspection' : '조사'} ${index + 1}] ${en ? 'step' : '단계'}=${trace.step}`, `${en ? 'Target' : '대상'}: ${trace.target}`, `${en ? 'Operation' : '작업'}: ${trace.operation}`, `${en ? 'Success' : '성공'}: ${trace.success ? (en ? 'Yes' : '예') : (en ? 'No' : '아니오')}`, en ? 'Executed code:' : '실행 코드:', trace.code || '(empty)', en ? 'Execution result:' : '실행 결과:', trace.result || '(empty)');
+        });
+        const after = metrics.filter(item => item.analysisAfterAgentic).map(item => `[${item.step}]\n${item.analysisAfterAgentic}`).join('\n\n');
+        lines.push('', en ? '=== MODEL ANALYSIS AFTER AGENTIC VISION ===' : '=== Agentic Vision 실행 후 모델 분석 ===', after || (en ? '(no final text output)' : '(최종 텍스트 출력 없음)'));
+      }
+      lines.push('', en ? '=== FINAL ANALYSIS SUMMARY ===' : '=== 최종 분석 결과 요약 ===', clipTelemetry(resultByLanguage[language] || (en ? '(no completed analysis)' : '(완료된 분석 없음)'), 12000));
+      if (failureReason) lines.push('', en ? '=== REASON PROCESSING DID NOT CONTINUE ===' : '=== 진행되지 않은 이유 ===', failureReason);
+      return lines.join('\n');
+    };
+
+    const textEn = makeText('en');
+    const textKr = makeText('kr');
+    const textFull = `===EXECUTION_REPORT_EN===\n${textEn}\n\n===EXECUTION_REPORT_KR===\n${textKr}`;
+    return {
+      status,
+      fileName,
+      selectedModel,
+      actualModels,
+      agenticRequested,
+      agenticState: agenticRequested ? agenticState : 'OFF',
+      agenticInspectionCount: traces.length,
+      agenticTrace: traces,
+      durationMs,
+      usage,
+      pricingBasis: PRICING_BASIS,
+      totalCostUSD,
+      agenticToolFeeUSD: 0,
+      agenticIncrementalTokenCostUSD: null,
+      agenticToolCostUSD: avToolCostUSD,
+      agenticStageCostUSD: avStageCostUSD,
+      failureReason: failureReason || '',
+      metrics,
+      text: textFull,
+      text_en: textEn,
+      text_kr: textKr,
+      text_full: textFull
+    };
+  }
+
+  function parseBlocks(text, blocks) {
+    const result = {};
+    for (const b of blocks) {
+      const startIdx = text.indexOf(b.start);
+      if (startIdx === -1) {
+        result[b.key] = '';
+        continue;
+      }
+      const contentStart = startIdx + b.start.length;
+      let contentEnd = text.length;
+      if (b.end) {
+        const endIdx = text.indexOf(b.end, contentStart);
+        if (endIdx !== -1) contentEnd = endIdx;
+      }
+      result[b.key] = text.slice(contentStart, contentEnd).trim();
+    }
+    return result;
+  }
+
+  function requireBlocks(text, blocks, label) {
+    const parsed = parseBlocks(text, blocks);
+    const missing = blocks.filter(block => !String(parsed[block.key] || '').trim()).map(block => block.start);
+    if (missing.length) throw new Error(`${label} is missing required block(s): ${missing.join(', ')}`);
+    return parsed;
+  }
+
+  function requireNumberedSections(text, expectedCount, label) {
+    const found = new Set();
+    const pattern = /(?:^|\n)\s*(?:\*\*)?\[?(\d{1,2})(?:[.\]\)])/g;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const number = Number(match[1]);
+      if (number >= 1 && number <= expectedCount) found.add(number);
+    }
+    if (found.size < expectedCount) {
+      const missing = [];
+      for (let i = 1; i <= expectedCount; i++) if (!found.has(i)) missing.push(i);
+      throw new Error(`${label} is missing numbered section(s): ${missing.join(', ')}`);
+    }
+  }
+
+  // Job Cards
+  const jobsEl = $('jobs');
+
+  function createJobCard({ file, fileName, mime, analysisBlob, analysisMime, previewUrl, imageInfo }) {
+    const stamp = nowStamp();
+    const jobId = `job_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const titleName = safeName(fileName || file?.name || 'image');
+
+    const el = document.createElement('div');
+    el.className = 'card job';
+    el.dataset.jobId = jobId;
+
+    el.innerHTML = `
+      <div class="jobhead">
+        <div class="left">
+          <span class="stamp">${stamp}</span>
+          <span class="badge"><b>Model</b> <span data-model>?</span></span>
+          <span class="badge"><b>AV</b> <span data-av>OFF</span></span>
+          <span class="status" data-status>Ready</span>
+        </div>
+        <div class="right" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" data-analyze>🔍 3-Step Analysis</button>
+          <button class="btn" data-cancel disabled>Cancel</button>
+          <button class="btn primary" data-retry-failed hidden>↻ Retry Failed Step</button>
+          <button class="btn" data-finalize-failed hidden>Finalize Current State</button>
+          <button class="btn" data-download disabled>📥 ZIP</button>
+          <button class="btn danger" data-delete>Delete</button>
+        </div>
+      </div>
+      <div class="progress"><div class="bar" data-progress></div></div>
+
+      <div class="jobbody">
+        <div class="preview">
+          <img alt="preview" src="${previewUrl}" />
+          <div class="meta">
+            <div class="name">${titleName}</div>
+            <div class="info">${mime || file?.type || 'image/*'} ${file?.size ? `• ${(file.size/1024).toFixed(1)} KB` : ''}${imageInfo?.label ? ` • ${imageInfo.label}` : ''}</div>
+          </div>
+        </div>
+
+        <div class="outputs">
+          <div class="section">
+            <div class="bar">
+              <h3>📊 Complete Technical Analysis <span class="tag">18 Sections</span></h3>
+              <div class="controls">
+                <span class="count" data-count-analysis>0 chars</span>
+                <button class="btn" data-copy-analysis disabled>Copy</button>
+              </div>
+            </div>
+            <div class="tabs">
+              <div class="tab active" data-tab="analysis-en">English</div>
+              <div class="tab" data-tab="analysis-kr">한국어</div>
+              <div class="tab" data-tab="analysis-full">Full</div>
+            </div>
+            <pre class="tab-content active" data-content="analysis-en">—</pre>
+            <pre class="tab-content" data-content="analysis-kr">—</pre>
+            <pre class="tab-content" data-content="analysis-full">—</pre>
+          </div>
+
+          <div class="section">
+            <div class="bar">
+              <h3>📝 Intermediate Report <span class="tag">70~80% | 15 Categories</span></h3>
+              <div class="controls">
+                <span class="count" data-count-report>0 chars</span>
+                <button class="btn" data-copy-report disabled>Copy</button>
+              </div>
+            </div>
+            <div class="tabs">
+              <div class="tab active" data-tab="report-en">English</div>
+              <div class="tab" data-tab="report-kr">한국어</div>
+              <div class="tab" data-tab="report-full">Full</div>
+            </div>
+            <pre class="tab-content active" data-content="report-en">—</pre>
+            <pre class="tab-content" data-content="report-kr">—</pre>
+            <pre class="tab-content" data-content="report-full">—</pre>
+          </div>
+
+          <div class="section">
+            <div class="bar">
+              <h3>✨ Generation Prompt <span class="tag">Optimized</span></h3>
+              <div class="controls">
+                <span class="count" data-count-prompt>0 chars</span>
+                <button class="btn" data-copy-prompt disabled>Copy</button>
+              </div>
+            </div>
+            <div class="tabs">
+              <div class="tab active" data-tab="prompt-en">English</div>
+              <div class="tab" data-tab="prompt-kr">한국어</div>
+              <div class="tab" data-tab="prompt-full">Full</div>
+            </div>
+            <pre class="tab-content active" data-content="prompt-en">—</pre>
+            <pre class="tab-content" data-content="prompt-kr">—</pre>
+            <pre class="tab-content" data-content="prompt-full">—</pre>
+          </div>
+
+          <div class="section">
+            <div class="bar">
+              <h3>🧾 실행 리포트 <span class="tag">Model · AV · Cost · Time</span></h3>
+              <div class="controls">
+                <span class="count" data-count-run-report>0 chars</span>
+                <button class="btn" data-copy-run-report disabled>Copy</button>
+              </div>
+            </div>
+            <div class="tabs">
+              <div class="tab active" data-tab="run-report-en">English</div>
+              <div class="tab" data-tab="run-report-kr">한국어</div>
+              <div class="tab" data-tab="run-report-full">Full</div>
+            </div>
+            <pre class="tab-content active" data-content="run-report-en">Execution details appear after analysis starts.</pre>
+            <pre class="tab-content" data-content="run-report-kr">분석을 시작하면 실행 정보가 표시됩니다.</pre>
+            <pre class="tab-content" data-content="run-report-full">—</pre>
+          </div>
+
+          <details>
+            <summary>🔧 Debug / Raw Response</summary>
+            <div class="inner" data-debug>—</div>
+          </details>
+        </div>
+      </div>
+    `;
+
+    jobsEl.prepend(el);
+
+    // Elements
+    const statusEl = el.querySelector('[data-status]');
+    const progressBar = el.querySelector('[data-progress]');
+    const analyzeBtn = el.querySelector('[data-analyze]');
+    const cancelBtn = el.querySelector('[data-cancel]');
+    const retryFailedBtn = el.querySelector('[data-retry-failed]');
+    const finalizeFailedBtn = el.querySelector('[data-finalize-failed]');
+    const downloadBtn = el.querySelector('[data-download]');
+    const deleteBtn = el.querySelector('[data-delete]');
+    const copyAnalysisBtn = el.querySelector('[data-copy-analysis]');
+    const copyReportBtn = el.querySelector('[data-copy-report]');
+    const copyPromptBtn = el.querySelector('[data-copy-prompt]');
+    const copyRunReportBtn = el.querySelector('[data-copy-run-report]');
+    const countAnalysis = el.querySelector('[data-count-analysis]');
+    const countReport = el.querySelector('[data-count-report]');
+    const countPrompt = el.querySelector('[data-count-prompt]');
+    const countRunReport = el.querySelector('[data-count-run-report]');
+    const modelPill = el.querySelector('[data-model]');
+    const avPill = el.querySelector('[data-av]');
+    const debugEl = el.querySelector('[data-debug]');
+    const runReportEN = el.querySelector('[data-content="run-report-en"]');
+    const runReportKR = el.querySelector('[data-content="run-report-kr"]');
+    const runReportFull = el.querySelector('[data-content="run-report-full"]');
+
+    const analysisEN = el.querySelector('[data-content="analysis-en"]');
+    const analysisKR = el.querySelector('[data-content="analysis-kr"]');
+    const analysisFull = el.querySelector('[data-content="analysis-full"]');
+    const reportEN = el.querySelector('[data-content="report-en"]');
+    const reportKR = el.querySelector('[data-content="report-kr"]');
+    const reportFull = el.querySelector('[data-content="report-full"]');
+    const promptEN = el.querySelector('[data-content="prompt-en"]');
+    const promptKR = el.querySelector('[data-content="prompt-kr"]');
+    const promptFull = el.querySelector('[data-content="prompt-full"]');
+
+    let activeRunReportLanguage = 'en';
+
+    // Tab functionality
+    el.querySelectorAll('.tabs').forEach(tabContainer => {
+      const tabs = tabContainer.querySelectorAll('.tab');
+      const section = tabContainer.closest('.section');
+      const contents = section.querySelectorAll('.tab-content');
+      
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabId = tab.dataset.tab;
+          tabs.forEach(t => t.classList.remove('active'));
+          contents.forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          section.querySelector(`[data-content="${tabId}"]`).classList.add('active');
+          if (tabId.startsWith('run-report-')) {
+            activeRunReportLanguage = tabId.slice('run-report-'.length);
+            const current = activeRunReportLanguage === 'kr' ? runReportTexts.kr : activeRunReportLanguage === 'full' ? runReportTexts.full : runReportTexts.en;
+            countRunReport.textContent = `${current.length} chars`;
+          }
+        });
+      });
+    });
+
+    let aborter = null;
+    let analysisText = '';
+    let reportText = '';
+    let promptText = '';
+    let analysisData = { en: '', kr: '' };
+    let reportData = { en: '', kr: '' };
+    let promptData = { en: '', kr: '' };
+    let requestMetrics = [];
+    let runReportText = '';
+    let runReportTexts = { en: '', kr: '', full: '' };
+    let runReportData = null;
+    let agenticVisionState = 'NOT_USED';
+    let lastAgenticVisionRequested = false;
+
+    function setStatus(type, msg) {
+      statusEl.classList.remove('ok', 'err', 'run');
+      if (type) statusEl.classList.add(type);
+      statusEl.textContent = msg;
+    }
+
+    function setProgress(percent) {
+      progressBar.style.width = `${percent}%`;
+    }
+
+    function updateCounts() {
+      countAnalysis.textContent = `${analysisText.length} chars`;
+      countReport.textContent = `${reportText.length} chars`;
+      countPrompt.textContent = `${promptText.length} chars`;
+      const currentRunReport = activeRunReportLanguage === 'kr' ? runReportTexts.kr : activeRunReportLanguage === 'full' ? runReportTexts.full : runReportTexts.en;
+      countRunReport.textContent = `${currentRunReport.length} chars`;
+    }
+
+    function publishRunReport({ status, model, agenticRequested, startedAt, failureReason = '' }) {
+      agenticVisionState = aggregateAgenticVisionState(requestMetrics);
+      avPill.textContent = agenticRequested ? agenticVisionState : 'OFF';
+      runReportData = buildRunReport({
+        status,
+        fileName: titleName,
+        selectedModel: model,
+        agenticRequested,
+        agenticState: agenticVisionState,
+        startedAt,
+        endedAt: performance.now(),
+        metrics: requestMetrics,
+        failureReason,
+        analysisResult: analysisData
+      });
+      runReportTexts = { en: runReportData.text_en, kr: runReportData.text_kr, full: runReportData.text_full };
+      runReportText = runReportTexts.full;
+      runReportEN.textContent = runReportTexts.en;
+      runReportKR.textContent = runReportTexts.kr;
+      runReportFull.textContent = runReportTexts.full;
+      copyRunReportBtn.disabled = false;
+      updateCounts();
+      return runReportData;
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('Copied to clipboard');
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        toast('Copied');
+      }
+    }
+
+    deleteBtn.addEventListener('click', () => {
+      if (aborter) aborter.abort();
+      URL.revokeObjectURL(previewUrl);
+      el.remove();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      if (aborter) {
+        aborter.abort();
+        cancelBtn.disabled = true;
+      }
+    });
+
+    copyAnalysisBtn.addEventListener('click', () => copyText(analysisText));
+    copyReportBtn.addEventListener('click', () => copyText(reportText));
+    copyPromptBtn.addEventListener('click', () => copyText(promptText));
+    copyRunReportBtn.addEventListener('click', () => copyText(activeRunReportLanguage === 'kr' ? runReportTexts.kr : activeRunReportLanguage === 'full' ? runReportTexts.full : runReportTexts.en));
+
+    async function downloadCurrentZip() {
+      if (typeof JSZip === 'undefined') {
+        toast('JSZip not loaded');
+        return;
+      }
+
+      const zip = new JSZip();
+      const baseName = titleName.replace(/\.[^.]+$/, '');
+      const ts = fileStamp();
+      const folder = zip.folder(`${baseName}_${ts}`);
+
+      if (file) {
+        const ext = (mime?.split('/')[1] || 'png').replace('jpeg', 'jpg');
+        folder.file(`original.${ext}`, file);
+      }
+
+      folder.file('analysis_EN.txt', analysisData.en || '(empty)');
+      folder.file('analysis_KR.txt', analysisData.kr || '(empty)');
+      folder.file('analysis_FULL.txt', analysisText || '(empty)');
+      folder.file('report_EN.txt', reportData.en || '(empty)');
+      folder.file('report_KR.txt', reportData.kr || '(empty)');
+      folder.file('report_FULL.txt', reportText || '(empty)');
+      folder.file('prompt_EN.txt', promptData.en || '(empty)');
+      folder.file('prompt_KR.txt', promptData.kr || '(empty)');
+      folder.file('prompt_FULL.txt', promptText || '(empty)');
+      folder.file('execution_report_EN.txt', runReportTexts.en || '(empty)');
+      folder.file('execution_report_KR.txt', runReportTexts.kr || '(empty)');
+      folder.file('execution_report_FULL.txt', runReportTexts.full || '(empty)');
+      folder.file('execution_report.json', JSON.stringify(runReportData || {}, null, 2));
+
+      const meta = {
+        version: 'v3.1-intermediate-report',
+        timestamp: stamp,
+        fileName: titleName,
+        appVariant: APP_VARIANT,
+        appVersion: APP_VERSION,
+        api: 'Gemini GenerateContent v1beta',
+        model: modelPill.textContent,
+        agenticVisionRequested: lastAgenticVisionRequested,
+        agenticVisionState,
+        imageProcessing: imageInfo,
+        requestMetrics,
+        executionReport: runReportData,
+        analysisChars: analysisText.length,
+        reportChars: reportText.length,
+        promptChars: promptText.length,
+        fieldsIncluded: 22,
+        sectionsAnalyzed: 18,
+        reportCategories: 15,
+        pipeline: '3-step full harness (Evidence → Synthesis → Audit)'
+      };
+      folder.file('metadata.json', JSON.stringify(meta, null, 2));
+
+      try {
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${baseName}_${ts}_complete.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        toast('ZIP download started');
+      } catch (e) {
+        toast('ZIP generation failed: ' + e.message);
+      }
+    }
+
+    downloadBtn.addEventListener('click', downloadCurrentZip);
+
+    let pendingStep = '';
+    let pendingFailure = '';
+    let runStartedAt = 0;
+    let savedRunConfig = null;
+    let savedEvidence = null;
+    let savedDraft = null;
+
+    function setDecisionButtons(visible) {
+      retryFailedBtn.hidden = !visible;
+      finalizeFailedBtn.hidden = !visible;
+    }
+
+    function historyReportFields() {
+      return {
+        runReportText: runReportTexts.full,
+        runReportTextEn: runReportTexts.en,
+        runReportTextKr: runReportTexts.kr,
+        runReportTextFull: runReportTexts.full
+      };
+    }
+
+    async function executeStepWithRetries(step, model, agenticVision, operation) {
+      for (let attempt = 0; attempt <= MAX_AUTOMATIC_RETRIES; attempt += 1) {
+        try {
+          const result = await operation(attempt);
+          requestMetrics.push({ step, model, ...result.response.__codexMeta, retryCount: attempt });
+          agenticVisionState = aggregateAgenticVisionState(requestMetrics);
+          avPill.textContent = agenticVision ? agenticVisionState : 'OFF';
+          return result.value;
+        } catch (error) {
+          if (error?.name === 'AbortError') throw error;
+          const failureReason = error?.message || String(error);
+          const meta = error?.__codexMeta || makeInteractionMeta(
+            null,
+            normalizeModelId(model),
+            agenticVision,
+            performance.now(),
+            attempt,
+            null,
+            failureReason
+          );
+          requestMetrics.push({ step, model, ...meta, retryCount: attempt, failureReason });
+          agenticVisionState = aggregateAgenticVisionState(requestMetrics);
+          avPill.textContent = agenticVision ? agenticVisionState : 'OFF';
+          if (error?.__autoRetryable === true && attempt < MAX_AUTOMATIC_RETRIES) {
+            const nextAttempt = attempt + 2;
+            setStatus('run', `${step}: automatic retry ${nextAttempt}/${MAX_AUTOMATIC_RETRIES + 1}...`);
+            debugEl.textContent += `\n\n[AUTO RETRY ${nextAttempt}/${MAX_AUTOMATIC_RETRIES + 1}] ${step}: ${failureReason}`;
+            await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
+            continue;
+          }
+          error.__failedStep = step;
+          throw error;
+        }
+      }
+      throw new Error(`${step} failed without a final result.`);
+    }
+
+    async function runAnalysis(resumeFailedStep = false) {
+      const resuming = Boolean(resumeFailedStep && pendingStep && savedRunConfig);
+      const apiKey = resuming ? savedRunConfig.apiKey : $('apiKey').value.trim();
+      if (!apiKey) {
+        toast('API Key is required');
+        return;
+      }
+
+      const model = resuming ? savedRunConfig.model : ($('customModel').value.trim() || $('model').value);
+      const maxAnalysis = resuming ? savedRunConfig.maxAnalysis : (Number($('maxTokensAnalysis').value) || 16384);
+      const maxReport = resuming ? savedRunConfig.maxReport : (Number($('maxTokensReport').value) || 8192);
+      const maxPrompt = resuming ? savedRunConfig.maxPrompt : (Number($('maxTokensPrompt').value) || 4096);
+      const thinking = resuming ? savedRunConfig.thinking : $('thinking').value;
+      const cameraMeta = resuming ? savedRunConfig.cameraMeta : $('cameraMeta').value;
+      const agenticVision = resuming ? savedRunConfig.agenticVision : $('agenticVision').checked;
+      if (!resuming) {
+        savedRunConfig = { apiKey, model, maxAnalysis, maxReport, maxPrompt, thinking, cameraMeta, agenticVision };
+        runStartedAt = performance.now();
+      }
+
+      modelPill.textContent = model;
+      avPill.textContent = agenticVision ? 'REQUESTED' : 'OFF';
+      lastAgenticVisionRequested = agenticVision;
+
+      if (!analysisBlob || !analysisMime) {
+        toast('No image data');
+        return;
+      }
+
+      let activeStep = resuming ? pendingStep : 'evidence';
+      const startIndex = { evidence: 0, synthesis: 1, audit: 2 }[activeStep] ?? 0;
+
+      analyzeBtn.disabled = true;
+      cancelBtn.disabled = false;
+      setDecisionButtons(false);
+      if (!resuming) downloadBtn.disabled = true;
+      if (!resuming) copyAnalysisBtn.disabled = true;
+      if (!resuming) copyReportBtn.disabled = true;
+      if (!resuming) copyPromptBtn.disabled = true;
+      copyRunReportBtn.disabled = true;
+      setProgress(startIndex === 0 ? 5 : startIndex === 1 ? 35 : 68);
+
+      if (!resuming) {
+        analysisEN.textContent = 'Building evidence ledger...';
+        analysisKR.textContent = '증거 원장 작성 중...';
+        analysisFull.textContent = '...';
+        reportEN.textContent = 'Waiting for synthesis...';
+        reportKR.textContent = '합성 대기 중...';
+        reportFull.textContent = '...';
+        promptEN.textContent = 'Waiting for final image audit...';
+        promptKR.textContent = '최종 이미지 대조 대기 중...';
+        promptFull.textContent = '...';
+        runReportEN.textContent = 'Collecting execution details...';
+        runReportKR.textContent = '실행 정보를 수집 중입니다...';
+        runReportFull.textContent = 'Collecting execution details...\n\n실행 정보를 수집 중입니다...';
+        debugEl.textContent = 'Starting full harness: Evidence → Synthesis → Audit...';
+        analysisText = '';
+        reportText = '';
+        promptText = '';
+        analysisData = { en: '', kr: '' };
+        reportData = { en: '', kr: '' };
+        promptData = { en: '', kr: '' };
+        requestMetrics = [];
+        runReportText = '';
+        runReportTexts = { en: '', kr: '', full: '' };
+        runReportData = null;
+        agenticVisionState = 'NOT_USED';
+        pendingFailure = '';
+        savedEvidence = null;
+        savedDraft = null;
+      } else {
+        debugEl.textContent += `\n\n=== MANUAL RETRY: ${activeStep.toUpperCase()} ===`;
+      }
+      updateCounts();
+
+      aborter = new AbortController();
+      let imageBase64 = '';
+
+      try {
+        // ==================== STEP 1: Evidence Ledger ====================
+        if (startIndex <= 0) {
+          activeStep = 'evidence';
+          setStatus('run', 'STEP 1/3: Building Evidence Ledger...');
+          savedEvidence = await executeStepWithRetries('evidence', model, agenticVision, async attempt => {
+            imageBase64 = await blobToBase64(analysisBlob);
+            let evidenceResponse;
+            try {
+              evidenceResponse = await callGemini({
+                apiKey,
+                model,
+                maxTokens: maxAnalysis,
+                thinkingLevel: thinking,
+                systemPrompt: getEvidenceSystemPrompt(),
+                userPrompt: getEvidenceUserPrompt(cameraMeta),
+                imageMime: analysisMime,
+                imageBase64,
+                agenticVision,
+                responseSchema: EVIDENCE_SCHEMA,
+                signal: aborter.signal,
+                attemptNumber: attempt
+              });
+              const evidence = parseStructuredResponse(evidenceResponse, 'Evidence ledger');
+              validateEvidence(evidence);
+              return { response: evidenceResponse, value: evidence };
+            } catch (error) {
+              throw attachResponseMeta(error, evidenceResponse);
+            } finally {
+              imageBase64 = '';
+            }
+          });
+          const evidenceChars = JSON.stringify(savedEvidence).length;
+          debugEl.textContent = `=== STEP 1: EVIDENCE LEDGER (${evidenceChars} chars) ===\nValidated 18 unique sections.\nAgentic Vision: ${agenticVisionState}\n\n[Full structured response in console]`;
+          console.log('Evidence Ledger:', savedEvidence);
+          setProgress(35);
+        }
+
+        // ==================== STEP 2: Bilingual Synthesis ====================
+        if (startIndex <= 1) {
+          activeStep = 'synthesis';
+          setStatus('run', 'STEP 2/3: Synthesizing Analysis and Report...');
+          reportEN.textContent = 'Synthesizing from validated evidence...';
+          reportKR.textContent = '검증된 증거에서 합성 중...';
+          savedDraft = await executeStepWithRetries('synthesis', model, agenticVision, async attempt => {
+            let draftResponse;
+            try {
+              draftResponse = await callGemini({
+                apiKey,
+                model,
+                maxTokens: combinedOutputBudget(model, maxAnalysis, maxReport),
+                thinkingLevel: thinking,
+                systemPrompt: getSynthesisSystemPrompt(),
+                userPrompt: getSynthesisUserPrompt(savedEvidence),
+                imageMime: null,
+                imageBase64: null,
+                responseSchema: DRAFT_SCHEMA,
+                signal: aborter.signal,
+                attemptNumber: attempt
+              });
+              const draft = parseStructuredResponse(draftResponse, 'Synthesis');
+              draft.analysis_en = validateLanguageText('Draft English analysis', draft.analysis_en, { forbidUnknown: true });
+              draft.analysis_kr = validateLanguageText('Draft Korean analysis', draft.analysis_kr, { forbidUnknown: true });
+              draft.report_en = validateLanguageText('Draft English report', draft.report_en);
+              draft.report_kr = validateLanguageText('Draft Korean report', draft.report_kr);
+              requireNumberedSections(draft.analysis_en, 18, 'Draft English analysis');
+              requireNumberedSections(draft.analysis_kr, 18, 'Draft Korean analysis');
+              return { response: draftResponse, value: draft };
+            } catch (error) {
+              throw attachResponseMeta(error, draftResponse);
+            }
+          });
+
+          analysisData = { en: savedDraft.analysis_en, kr: savedDraft.analysis_kr };
+          reportData = { en: savedDraft.report_en, kr: savedDraft.report_kr };
+          analysisText = `===ANALYSIS_EN===\n${analysisData.en}\n\n===ANALYSIS_KR===\n${analysisData.kr}`;
+          reportText = `===REPORT_EN===\n${reportData.en}\n\n===REPORT_KR===\n${reportData.kr}`;
+          analysisEN.textContent = analysisData.en;
+          analysisKR.textContent = analysisData.kr;
+          analysisFull.textContent = analysisText;
+          reportEN.textContent = reportData.en;
+          reportKR.textContent = reportData.kr;
+          reportFull.textContent = reportText;
+          copyAnalysisBtn.disabled = false;
+          copyReportBtn.disabled = false;
+          updateCounts();
+          debugEl.textContent += `\n\n=== STEP 2: SYNTHESIS ===\nAnalysis and report draft passed structure checks.`;
+          setProgress(68);
+        }
+
+        // ==================== STEP 3: Image-grounded Final Audit ====================
+        activeStep = 'audit';
+        setStatus('run', 'STEP 3/3: Auditing Against Original Image...');
+        promptEN.textContent = 'Auditing draft against the image...';
+        promptKR.textContent = '초안을 이미지와 대조 중...';
+
+        const finalOutput = await executeStepWithRetries('audit', model, agenticVision, async attempt => {
+          imageBase64 = await blobToBase64(analysisBlob);
+          let finalResponse;
+          try {
+            finalResponse = await callGemini({
+              apiKey,
+              model,
+              maxTokens: combinedOutputBudget(model, maxAnalysis, maxReport, maxPrompt),
+              thinkingLevel: thinking,
+              systemPrompt: getAuditSystemPrompt(),
+              userPrompt: getAuditUserPrompt(savedEvidence, savedDraft, cameraMeta),
+              imageMime: analysisMime,
+              imageBase64,
+              agenticVision,
+              responseSchema: FINAL_SCHEMA,
+              signal: aborter.signal,
+              attemptNumber: attempt
+            });
+            const output = parseStructuredResponse(finalResponse, 'Final audit');
+            output.analysis_en = validateLanguageText('Final English analysis', output.analysis_en, { forbidUnknown: true });
+            output.analysis_kr = validateLanguageText('Final Korean analysis', output.analysis_kr, { forbidUnknown: true });
+            output.report_en = validateLanguageText('Final English report', output.report_en);
+            output.report_kr = validateLanguageText('Final Korean report', output.report_kr);
+            output.prompt_en = validateLanguageText('Final English prompt', output.prompt_en);
+            output.prompt_kr = validateLanguageText('Final Korean prompt', output.prompt_kr);
+            requireNumberedSections(output.analysis_en, 18, 'Final English analysis');
+            requireNumberedSections(output.analysis_kr, 18, 'Final Korean analysis');
+            return { response: finalResponse, value: output };
+          } catch (error) {
+            throw attachResponseMeta(error, finalResponse);
+          } finally {
+            imageBase64 = '';
+          }
+        });
+
+        analysisData = { en: finalOutput.analysis_en.trim(), kr: finalOutput.analysis_kr.trim() };
+        reportData = { en: finalOutput.report_en.trim(), kr: finalOutput.report_kr.trim() };
+        promptData = { en: finalOutput.prompt_en.trim(), kr: finalOutput.prompt_kr.trim() };
+        analysisText = `===ANALYSIS_EN===\n${analysisData.en}\n\n===ANALYSIS_KR===\n${analysisData.kr}`;
+        reportText = `===REPORT_EN===\n${reportData.en}\n\n===REPORT_KR===\n${reportData.kr}`;
+        promptText = `===PROMPT_EN===\n${promptData.en}\n\n===PROMPT_KR===\n${promptData.kr}`;
+
+        analysisEN.textContent = analysisData.en;
+        analysisKR.textContent = analysisData.kr;
+        analysisFull.textContent = analysisText;
+        reportEN.textContent = reportData.en;
+        reportKR.textContent = reportData.kr;
+        reportFull.textContent = reportText;
+        promptEN.textContent = promptData.en;
+        promptKR.textContent = promptData.kr;
+        promptFull.textContent = promptText;
+        copyAnalysisBtn.disabled = false;
+        copyReportBtn.disabled = false;
+        copyPromptBtn.disabled = false;
+        updateCounts();
+
+        const compressionRatio = analysisText.length > 0
+          ? ((reportText.length / analysisText.length) * 100).toFixed(1)
+          : '—';
+        const auditNotes = Array.isArray(finalOutput.audit_notes) ? finalOutput.audit_notes : [];
+        debugEl.textContent += `\n\n=== STEP 3: FINAL AUDIT ===\nCorrections recorded: ${auditNotes.length}\n${auditNotes.join('\n') || 'No correction was required.'}\n\n📊 Compression: ${compressionRatio}% of final analysis`;
+
+        setProgress(100);
+        const avSummary = agenticVision ? ` | AV ${agenticVisionState}` : '';
+        setStatus('ok', `Complete (Full Harness | ${compressionRatio}% compression${avSummary})`);
+        downloadBtn.disabled = false;
+        pendingStep = '';
+        pendingFailure = '';
+        setDecisionButtons(false);
+
+        const completedReport = publishRunReport({
+          status: 'COMPLETED',
+          model,
+          agenticRequested: agenticVision,
+          startedAt: runStartedAt
+        });
+
+        saveToHistory({
+          status: 'COMPLETED',
+          ts: stamp,
+          fileName: titleName,
+          model,
+          harness: 'Evidence → Synthesis → Audit',
+          agenticVisionRequested: agenticVision,
+          agenticVisionState,
+          analysisLength: analysisText.length,
+          reportLength: reportText.length,
+          promptLength: promptText.length,
+          compressionRatio,
+          durationMs: completedReport.durationMs,
+          totalCostUSD: completedReport.totalCostUSD,
+          agenticToolCostUSD: completedReport.agenticToolCostUSD,
+          agenticInspectionCount: completedReport.agenticInspectionCount,
+          ...historyReportFields()
+        });
+
+        toast(`Full-harness analysis complete! Report: ${compressionRatio}% compression`);
+
+      } catch (e) {
+        if (e?.name === 'AbortError') {
+          pendingStep = '';
+          pendingFailure = '';
+          setDecisionButtons(false);
+          setStatus('', 'Canceled');
+          debugEl.textContent += '\n\n=== CANCELED BY USER ===';
+          const canceledReport = publishRunReport({
+            status: 'CANCELED',
+            model,
+            agenticRequested: agenticVision,
+            startedAt: runStartedAt,
+            failureReason: '사용자가 작업을 취소했습니다.'
+          });
+          saveToHistory({
+            status: 'CANCELED', ts: stamp, fileName: titleName, model,
+            harness: 'Evidence → Synthesis → Audit',
+            agenticVisionRequested: agenticVision, agenticVisionState,
+            durationMs: canceledReport.durationMs,
+            totalCostUSD: canceledReport.totalCostUSD,
+            agenticInspectionCount: canceledReport.agenticInspectionCount,
+            ...historyReportFields()
+          });
+          toast('Analysis canceled');
+          setProgress(0);
+          return;
+        }
+        const msg = e?.message || String(e);
+        pendingStep = e?.__failedStep || activeStep;
+        pendingFailure = msg;
+        setStatus('err', `Retry decision required: ${pendingStep}`);
+        debugEl.textContent += `\n\n=== RETRY DECISION REQUIRED (${pendingStep.toUpperCase()}) ===\n${msg}`;
+        publishRunReport({
+          status: 'WAITING_FOR_DECISION',
+          model,
+          agenticRequested: agenticVision,
+          startedAt: runStartedAt,
+          failureReason: msg
+        });
+        setDecisionButtons(true);
+        toast('Automatic retries ended. Retry the failed step or finalize the current state.');
+
+      } finally {
+        imageBase64 = '';
+        aborter = null;
+        cancelBtn.disabled = true;
+        analyzeBtn.disabled = Boolean(pendingStep);
+      }
+    }
+
+    analyzeBtn.addEventListener('click', () => runAnalysis(false));
+    retryFailedBtn.addEventListener('click', () => runAnalysis(true));
+    finalizeFailedBtn.addEventListener('click', async () => {
+      if (!pendingStep || !savedRunConfig) return;
+      const hasPartialOutput = Boolean(analysisText || reportText || promptText);
+      const finalStatus = hasPartialOutput ? 'PARTIAL_FINALIZED' : 'FAILED_FINALIZED';
+      const failedStep = pendingStep;
+      const failureReason = pendingFailure;
+      setDecisionButtons(false);
+      const finalizedReport = publishRunReport({
+        status: finalStatus,
+        model: savedRunConfig.model,
+        agenticRequested: savedRunConfig.agenticVision,
+        startedAt: runStartedAt,
+        failureReason
+      });
+      saveToHistory({
+        status: finalStatus,
+        ts: stamp,
+        fileName: titleName,
+        model: savedRunConfig.model,
+        harness: 'Evidence → Synthesis → Audit',
+        failedStep,
+        failureReason,
+        agenticVisionRequested: savedRunConfig.agenticVision,
+        agenticVisionState,
+        analysisLength: analysisText.length,
+        reportLength: reportText.length,
+        promptLength: promptText.length,
+        durationMs: finalizedReport.durationMs,
+        totalCostUSD: finalizedReport.totalCostUSD,
+        agenticToolCostUSD: finalizedReport.agenticToolCostUSD,
+        agenticInspectionCount: finalizedReport.agenticInspectionCount,
+        ...historyReportFields()
+      });
+      pendingStep = '';
+      pendingFailure = '';
+      analyzeBtn.disabled = false;
+      downloadBtn.disabled = false;
+      setStatus(hasPartialOutput ? 'ok' : 'err', hasPartialOutput ? 'Partial result finalized' : 'Failure finalized');
+      toast('Current state finalized and saved.');
+      await downloadCurrentZip();
+    });
+  }
+
+  // File Input
+  const MAX_IMAGE_SIDE = 4096;
+  const MAX_IMAGE_PIXELS = 16000000;
+  const API_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif', 'image/gif', 'image/bmp', 'image/tiff']);
+
+  async function readImageDimensions(file) {
+    if ('ImageDecoder' in window && typeof ImageDecoder.isTypeSupported === 'function') {
+      try {
+        if (await ImageDecoder.isTypeSupported(file.type)) {
+          const decoder = new ImageDecoder({ data: file.stream(), type: file.type });
+          try {
+            await decoder.tracks.ready;
+            const track = decoder.tracks.selectedTrack;
+            if (track?.codedWidth && track?.codedHeight) {
+              return { width: track.codedWidth, height: track.codedHeight };
+            }
+          } finally {
+            decoder.close();
+          }
+        }
+      } catch (e) {
+        console.warn('ImageDecoder metadata read failed; using browser image metadata.', e);
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const dimensions = { width: img.naturalWidth, height: img.naturalHeight };
+        img.src = '';
+        URL.revokeObjectURL(url);
+        resolve(dimensions);
+      };
+      img.onerror = () => {
+        img.src = '';
+        URL.revokeObjectURL(url);
+        reject(new Error('The browser could not decode this image.'));
+      };
+      img.src = url;
+    });
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image resize failed.')), type, quality);
+    });
+  }
+
+  async function resizeImage(file, width, height) {
+    const bitmap = await createImageBitmap(file, {
+      resizeWidth: width,
+      resizeHeight: height,
+      resizeQuality: 'high'
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    try {
+      const ctx = canvas.getContext('2d', { alpha: true });
+      if (!ctx) throw new Error('Canvas is unavailable.');
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      return await canvasToBlob(canvas, 'image/webp', 0.92);
+    } finally {
+      bitmap.close();
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        const comma = result.indexOf(',');
+        if (comma === -1) reject(new Error('Image encoding failed.'));
+        else resolve(result.slice(comma + 1));
+      };
+      reader.onerror = () => reject(new Error('Image encoding failed.'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function prepareImage(file) {
+    const { width, height } = await readImageDimensions(file);
+    if (!width || !height) throw new Error('Invalid image dimensions.');
+
+    const scale = Math.min(
+      1,
+      MAX_IMAGE_SIDE / Math.max(width, height),
+      Math.sqrt(MAX_IMAGE_PIXELS / (width * height))
+    );
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+    const mustConvert = !API_IMAGE_MIMES.has(file.type);
+    const resized = scale < 1 || mustConvert;
+    const analysisBlob = resized ? await resizeImage(file, targetWidth, targetHeight) : file;
+    const analysisMime = resized ? 'image/webp' : file.type;
+    const previewUrl = URL.createObjectURL(analysisBlob);
+    const label = resized
+      ? `${width}×${height} → ${targetWidth}×${targetHeight} 분석용 축소`
+      : `${width}×${height} 원본 크기 분석`;
+
+    return {
+      analysisBlob,
+      analysisMime,
+      previewUrl,
+      imageInfo: {
+        originalWidth: width,
+        originalHeight: height,
+        analysisWidth: targetWidth,
+        analysisHeight: targetHeight,
+        resized,
+        label
+      }
+    };
+  }
+
+  async function handleFile(file) {
+    if (!file || !file.type?.startsWith('image/')) {
+      toast('Please provide an image file');
+      return;
+    }
+    try {
+      const prepared = await prepareImage(file);
+      createJobCard({
+        file,
+        fileName: file.name,
+        mime: file.type,
+        ...prepared
+      });
+      toast(prepared.imageInfo.resized
+        ? 'Large image resized safely for analysis'
+        : 'Image added - ready for 3-step analysis');
+    } catch (e) {
+      toast(e?.message || 'Image preparation failed');
+    }
+  }
+
+  const dz = $('dropzone');
+  const fi = $('fileInput');
+
+  dz.addEventListener('click', () => fi.click());
+  $('btnPick').addEventListener('click', () => fi.click());
+
+  fi.addEventListener('change', async (e) => {
+    const f = e.target.files?.[0];
+    if (f) await handleFile(f);
+    fi.value = '';
+  });
+
+  dz.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dz.classList.add('drag');
+  });
+
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+
+  dz.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dz.classList.remove('drag');
+    const f = e.dataTransfer.files?.[0];
+    if (f) await handleFile(f);
+  });
+
+  document.addEventListener('paste', async (e) => {
+    const tagName = String(e.target?.tagName || '').toUpperCase();
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || e.target?.isContentEditable) return;
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type?.startsWith('image/')) {
+        const f = item.getAsFile();
+        if (f) {
+          await handleFile(f);
+          return;
+        }
+      }
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
