@@ -11,6 +11,7 @@
 - Uses the selected Gemini model for every stage without automatic model substitution.
 - Agentic Vision is available only in the Resolver stage for targeted face, hand, and contact zoom or crop inspection.
 - Records models, Agentic Vision inspections, time, tokens, estimated cost, retries, and failure reasons in the execution report.
+- Automatically saves completed results as one TXT file plus the unchanged source image in the shared `results` folder.
 
 ## Menu guide
 
@@ -32,6 +33,7 @@
 | Reset Settings | Reset saved settings and clear the current API-key field. |
 | Refresh Model List | Load analysis models available to the account using the API key. |
 | Test Selected Model | Run a short check of the current model, API key, and structured-request format. |
+| Connect shared results folder | Connect the repository's `results` folder as the automatic save destination. |
 | Safety OFF | Status indicator showing that the four adjustable safety filters are requested as OFF. |
 
 ### Image input and history
@@ -47,8 +49,8 @@
 | Analyze | Run Pose Map → Resolver → Pose-Locked Compiler. |
 | Cancel | Cancel the current run. |
 | Retry Failed Step with Current Model | Resume from the failed stage with the currently selected model after automatic retries are exhausted. Verified earlier stages are preserved. |
-| Finalize Current State | Preserve the current outputs and failure reason for history, reports, and ZIP export. |
-| Save ZIP | Save analysis EN/KR, prompt EN/KR, execution reports EN/KR, run JSON, internal PoseGraph trace, and the processed image. |
+| Finalize Current State | Save the current outputs and failure reason to history and the `results` folder. |
+| Save Again | Save the current TXT and unchanged source image again under a new, non-overwriting shared base name. |
 | Delete | Remove the job card from the page. |
 
 ### Output areas
@@ -62,13 +64,11 @@
 ## How to use
 
 1. Open `PoseGraph하네스.html` in a browser.
-2. Enter a Gemini API key.
-3. Select a Model. Leave Custom Model empty unless you need an unlisted model ID.
-4. Optionally select `Test Selected Model` to verify the connection and structured output.
-5. Set token limits, Thinking, Camera Description Style, and Agentic Vision. To use Agentic Vision in the Resolver, select a Gemini 3 model and do not select Thinking Off.
-6. Add an image and select `Analyze` on the job card.
-7. After completion, review or copy the long analysis, generation prompt, and execution report in the desired language.
-8. Select `Save ZIP` for the complete result set.
-9. If automatic retries fail, change the model if desired and select `Retry Failed Step with Current Model`. A Custom Model value overrides the model list.
-10. Gemini 2.5 cannot be selected when retrying from the Agentic Resolver. It can be used for a retry that starts at the non-Agentic Compiler.
-11. If you do not want to retry, select `Finalize Current State` to preserve the current outputs and error information.
+2. When first using this HTML app, select `Connect shared results folder` and choose this repository's `results` folder.
+3. Enter a Gemini API key, select a Model, and optionally run `Test Selected Model`.
+4. Set the desired options, add an image, and select `Analyze`.
+5. On completion, one TXT contains the EN/KR long analysis, generation prompt, and execution report; the original image is saved unchanged with the same base name plus `_ref`.
+6. Names follow `date_time_milliseconds_v302_PoseGraph_source-name` and never overwrite an existing TXT.
+7. Select `Save Again` to create another pair under a new base name.
+8. If automatic retries fail, change the model if desired and retry from the failed stage. Gemini 2.5 cannot be selected for an Agentic Vision Resolver retry.
+9. If you do not want to retry, select `Finalize Current State` to save the current outputs and error. Opening Saved History does not create another filesystem save.

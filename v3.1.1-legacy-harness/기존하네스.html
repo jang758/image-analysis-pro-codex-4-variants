@@ -5,7 +5,6 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Image Analysis Pro v3.1.1 - 20260809 Codex 기존 하네스</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
       --bg: #0a0c10;
@@ -246,6 +245,8 @@
           <button class="btn primary" id="saveSettings">Save Settings (Key 제외)</button>
           <button class="btn" id="clearSettings">Clear</button>
           <button class="btn" id="refreshModels">Refresh Models</button>
+          <button class="btn" id="connectResultsFolder">공통 results 폴더 연결</button>
+          <span class="badge" id="resultsFolderStatus"><b>Save</b> 폴더 연결 필요</span>
           <button class="btn danger" id="clearHistory">Clear History</button>
         </div>
         
@@ -349,6 +350,11 @@
   // App identity + isolated storage. API keys are never written to storage.
   const APP_VARIANT = 'legacyHarness';
   const APP_VERSION = 'v3.1.1-codex-20260809';
+  const RESULT_VARIANT_TAG = 'v311_기존하네스';
+  const RESULT_FOLDER_NAME = 'results';
+  const RESULT_DB_NAME = 'imageAnalysisPro.flatResults.v1';
+  const RESULT_DB_STORE = 'handles';
+  const RESULT_HANDLE_KEY = 'sharedResultsDirectory';
   const STORAGE_NS = `imageAnalysisPro.${APP_VERSION}.${APP_VARIANT}`;
   const SETTINGS_KEY = `${STORAGE_NS}.settings`;
   const HISTORY_KEY = `${STORAGE_NS}.history`;
@@ -372,6 +378,151 @@
     'gemini-2.5-flash-lite'
   ];
   let MODEL_META = {};
+  let resultsDirectoryHandle = null;
+
+  function setResultsFolderStatus(text, ok = false) {
+    const status = $('resultsFolderStatus');
+    status.innerHTML = `<b>Save</b> ${text}`;
+    status.style.borderColor = ok ? 'rgba(74,222,128,.3)' : 'rgba(251,191,36,.3)';
+  }
+
+  function openResultsDatabase() {
+    return new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') return reject(new Error('이 브라우저는 폴더 연결 저장을 지원하지 않습니다.'));
+      const request = indexedDB.open(RESULT_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(RESULT_DB_STORE)) request.result.createObjectStore(RESULT_DB_STORE);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('폴더 연결 정보를 열지 못했습니다.'));
+    });
+  }
+
+  async function readStoredResultsHandle() {
+    const db = await openResultsDatabase();
+    try {
+      return await new Promise((resolve, reject) => {
+        const request = db.transaction(RESULT_DB_STORE, 'readonly').objectStore(RESULT_DB_STORE).get(RESULT_HANDLE_KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error('폴더 연결 정보를 읽지 못했습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function storeResultsHandle(handle) {
+    const db = await openResultsDatabase();
+    try {
+      await new Promise((resolve, reject) => {
+        const request = db.transaction(RESULT_DB_STORE, 'readwrite').objectStore(RESULT_DB_STORE).put(handle, RESULT_HANDLE_KEY);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error || new Error('폴더 연결 정보를 저장하지 못했습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function connectResultsFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      toast('Chrome 또는 Edge 최신 버전에서 실행해 주세요.');
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ id: 'image-analysis-pro-results', mode: 'readwrite' });
+      if (handle.name !== RESULT_FOLDER_NAME) throw new Error(`프로젝트 안의 ${RESULT_FOLDER_NAME} 폴더를 선택해 주세요.`);
+      let permission = await handle.queryPermission({ mode: 'readwrite' });
+      if (permission !== 'granted') permission = await handle.requestPermission({ mode: 'readwrite' });
+      if (permission !== 'granted') throw new Error('results 폴더 쓰기 권한이 허용되지 않았습니다.');
+      resultsDirectoryHandle = handle;
+      await storeResultsHandle(handle);
+      setResultsFolderStatus('results 연결됨', true);
+      toast('공통 results 폴더를 연결했습니다.');
+    } catch (e) {
+      if (e?.name !== 'AbortError') toast(e?.message || 'results 폴더 연결에 실패했습니다.');
+    }
+  }
+
+  async function restoreResultsFolder() {
+    try {
+      const handle = await readStoredResultsHandle();
+      if (!handle || handle.name !== RESULT_FOLDER_NAME) return;
+      resultsDirectoryHandle = handle;
+      const permission = await handle.queryPermission({ mode: 'readwrite' });
+      setResultsFolderStatus(permission === 'granted' ? 'results 연결됨' : '권한 재연결 필요', permission === 'granted');
+    } catch (_) {
+      setResultsFolderStatus('폴더 연결 필요');
+    }
+  }
+
+  async function requireResultsDirectory() {
+    if (!resultsDirectoryHandle) resultsDirectoryHandle = await readStoredResultsHandle();
+    if (!resultsDirectoryHandle || resultsDirectoryHandle.name !== RESULT_FOLDER_NAME) throw new Error('먼저 공통 results 폴더를 연결해 주세요.');
+    const permission = await resultsDirectoryHandle.queryPermission({ mode: 'readwrite' });
+    if (permission !== 'granted') throw new Error('results 폴더 권한을 다시 연결해 주세요.');
+    return resultsDirectoryHandle;
+  }
+
+  function resultStamp(date = new Date()) {
+    const pad = (n, width = 2) => String(n).padStart(width, '0');
+    return `${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}_${pad(date.getMilliseconds(), 3)}`;
+  }
+
+  function resultSourceStem(name) {
+    const withoutExtension = String(name || 'image').replace(/\.[^.]+$/, '');
+    return withoutExtension.normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').replace(/[. ]+$/g, '').slice(0, 80) || 'image';
+  }
+
+  function resultSourceExtension(name) {
+    const match = String(name || '').match(/(\.[^.\\/]+)$/);
+    return match ? match[1].replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_') : '';
+  }
+
+  function composeFlatResult(sections) {
+    return sections.map(([title, value]) => `=== ${title} ===\n${String(value || '')}`).join('\n\n');
+  }
+
+  async function resultFileExists(directory, name) {
+    try {
+      await directory.getFileHandle(name);
+      return true;
+    } catch (e) {
+      if (e?.name === 'NotFoundError') return false;
+      throw e;
+    }
+  }
+
+  async function uniqueResultBase(directory, sourceName) {
+    const root = `${resultStamp()}_${RESULT_VARIANT_TAG}_${resultSourceStem(sourceName)}`;
+    for (let index = 0; index < 1000; index++) {
+      const candidate = index ? `${root}_${index + 1}` : root;
+      if (!await resultFileExists(directory, `${candidate}.txt`)) return candidate;
+    }
+    throw new Error('고유한 결과 파일명을 만들지 못했습니다.');
+  }
+
+  async function writeResultFile(directory, name, data) {
+    const handle = await directory.getFileHandle(name, { create: true });
+    const writable = await handle.createWritable();
+    try {
+      await writable.write(data);
+    } finally {
+      await writable.close();
+    }
+  }
+
+  async function saveFlatResult({ sourceFile, sourceName, text }) {
+    const directory = await requireResultsDirectory();
+    const base = await uniqueResultBase(directory, sourceName);
+    await writeResultFile(directory, `${base}.txt`, new TextEncoder().encode(text));
+    let referenceName = '';
+    if (sourceFile && typeof sourceFile.arrayBuffer === 'function') {
+      referenceName = `${base}_ref${resultSourceExtension(sourceFile.name || sourceName)}`;
+      await writeResultFile(directory, referenceName, sourceFile);
+    }
+    return { base, textName: `${base}.txt`, referenceName };
+  }
 
   function selectModelValue(modelId) {
     const id = normalizeModelId(modelId);
@@ -464,6 +615,7 @@
   $('saveSettings').addEventListener('click', saveSettings);
   $('clearSettings').addEventListener('click', clearSettings);
   $('refreshModels').addEventListener('click', refreshModelList);
+  $('connectResultsFolder').addEventListener('click', connectResultsFolder);
 
   function setApiKeyValue(rawValue) {
     const value = String(rawValue || '').trim();
@@ -531,6 +683,7 @@
   loadSettings();
   if (!$('model').value) selectModelValue(DEFAULT_MODEL);
   syncModelControls();
+  restoreResultsFolder();
 
   // History
   function loadHistory() {
@@ -1762,13 +1915,14 @@ Generate prompts now with ===PROMPT_EN=== and ===PROMPT_KR=== blocks.`;
           <span class="badge"><b>Model</b> <span data-model>?</span></span>
           <span class="badge"><b>AV</b> <span data-av>OFF</span></span>
           <span class="status" data-status>Ready</span>
+          <span class="status" data-save-status>Save: 대기</span>
         </div>
         <div class="right" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn primary" data-analyze>🔍 3-Step Analysis</button>
           <button class="btn" data-cancel disabled>Cancel</button>
           <button class="btn primary" data-retry-failed hidden>↻ Retry Failed Step</button>
           <button class="btn" data-finalize-failed hidden>Finalize Current State</button>
-          <button class="btn" data-download disabled>📥 ZIP</button>
+          <button class="btn" data-download disabled>다시 저장</button>
           <button class="btn danger" data-delete>Delete</button>
         </div>
       </div>
@@ -1868,6 +2022,7 @@ Generate prompts now with ===PROMPT_EN=== and ===PROMPT_KR=== blocks.`;
 
     // Elements
     const statusEl = el.querySelector('[data-status]');
+    const saveStatusEl = el.querySelector('[data-save-status]');
     const progressBar = el.querySelector('[data-progress]');
     const analyzeBtn = el.querySelector('[data-analyze]');
     const cancelBtn = el.querySelector('[data-cancel]');
@@ -2014,76 +2169,41 @@ Generate prompts now with ===PROMPT_EN=== and ===PROMPT_KR=== blocks.`;
     copyPromptBtn.addEventListener('click', () => copyText(promptText));
     copyRunReportBtn.addEventListener('click', () => copyText(activeRunReportLanguage === 'kr' ? runReportTexts.kr : activeRunReportLanguage === 'full' ? runReportTexts.full : runReportTexts.en));
 
-    async function downloadCurrentZip() {
-      if (typeof JSZip === 'undefined') {
-        toast('JSZip not loaded');
-        return;
-      }
+    function currentResultText() {
+      return composeFlatResult([
+        ['ANALYSIS_EN', analysisData.en],
+        ['ANALYSIS_KR', analysisData.kr],
+        ['REPORT_EN', reportData.en],
+        ['REPORT_KR', reportData.kr],
+        ['PROMPT_EN', promptData.en],
+        ['PROMPT_KR', promptData.kr],
+        ['EXECUTION_REPORT_EN', runReportTexts.en],
+        ['EXECUTION_REPORT_KR', runReportTexts.kr]
+      ]);
+    }
 
-      const zip = new JSZip();
-      const baseName = titleName.replace(/\.[^.]+$/, '');
-      const ts = fileStamp();
-      const folder = zip.folder(`${baseName}_${ts}`);
-
-      if (file) {
-        const ext = (mime?.split('/')[1] || 'png').replace('jpeg', 'jpg');
-        folder.file(`original.${ext}`, file);
-      }
-
-      folder.file('analysis_EN.txt', analysisData.en || '(empty)');
-      folder.file('analysis_KR.txt', analysisData.kr || '(empty)');
-      folder.file('analysis_FULL.txt', analysisText || '(empty)');
-      folder.file('report_EN.txt', reportData.en || '(empty)');
-      folder.file('report_KR.txt', reportData.kr || '(empty)');
-      folder.file('report_FULL.txt', reportText || '(empty)');
-      folder.file('prompt_EN.txt', promptData.en || '(empty)');
-      folder.file('prompt_KR.txt', promptData.kr || '(empty)');
-      folder.file('prompt_FULL.txt', promptText || '(empty)');
-      folder.file('execution_report_EN.txt', runReportTexts.en || '(empty)');
-      folder.file('execution_report_KR.txt', runReportTexts.kr || '(empty)');
-      folder.file('execution_report_FULL.txt', runReportTexts.full || '(empty)');
-      folder.file('execution_report.json', JSON.stringify(runReportData || {}, null, 2));
-
-      const meta = {
-        version: 'v3.1-intermediate-report',
-        timestamp: stamp,
-        fileName: titleName,
-        appVariant: APP_VARIANT,
-        appVersion: APP_VERSION,
-        api: 'Gemini GenerateContent v1beta',
-        model: modelPill.textContent,
-        agenticVisionRequested: lastAgenticVisionRequested,
-        agenticVisionState,
-        imageProcessing: imageInfo,
-        requestMetrics,
-        executionReport: runReportData,
-        analysisChars: analysisText.length,
-        reportChars: reportText.length,
-        promptChars: promptText.length,
-        fieldsIncluded: 22,
-        sectionsAnalyzed: 18,
-        reportCategories: 15,
-        pipeline: '3-step legacy harness (Analysis → Report → Prompt)'
-      };
-      folder.file('metadata.json', JSON.stringify(meta, null, 2));
-
+    async function saveCurrentResult(manual = false) {
+      downloadBtn.disabled = true;
+      saveStatusEl.className = 'status run';
+      saveStatusEl.textContent = 'Save: 저장 중';
       try {
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${baseName}_${ts}_complete.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-        toast('ZIP download started');
+        const saved = await saveFlatResult({ sourceFile: file, sourceName: fileName, text: currentResultText() });
+        saveStatusEl.className = 'status ok';
+        saveStatusEl.textContent = `Save: ${saved.base}`;
+        toast(manual ? '결과를 새 파일명으로 다시 저장했습니다.' : '분석 결과를 자동 저장했습니다.');
+        return true;
       } catch (e) {
-        toast('ZIP generation failed: ' + e.message);
+        saveStatusEl.className = 'status err';
+        saveStatusEl.textContent = 'Save: 실패';
+        debugEl.textContent += `\n\n=== FILE SAVE ERROR ===\n${e?.message || e}`;
+        toast(`분석 결과는 유지됩니다. 파일 저장 실패: ${e?.message || e}`);
+        return false;
+      } finally {
+        downloadBtn.disabled = false;
       }
     }
 
-    downloadBtn.addEventListener('click', downloadCurrentZip);
+    downloadBtn.addEventListener('click', () => saveCurrentResult(true));
 
     let pendingStep = '';
     let pendingFailure = '';
@@ -2404,6 +2524,8 @@ Generate prompts now with ===PROMPT_EN=== and ===PROMPT_KR=== blocks.`;
           ...historyReportFields()
         });
 
+        await saveCurrentResult(false);
+
         toast(`3-Step analysis complete! Report: ${compressionRatio}% compression`);
 
       } catch (e) {
@@ -2494,8 +2616,8 @@ Generate prompts now with ===PROMPT_EN=== and ===PROMPT_KR=== blocks.`;
       analyzeBtn.disabled = false;
       downloadBtn.disabled = false;
       setStatus(hasPartialOutput ? 'ok' : 'err', hasPartialOutput ? 'Partial result finalized' : 'Failure finalized');
-      toast('Current state finalized and saved.');
-      await downloadCurrentZip();
+      toast('Current state finalized.');
+      await saveCurrentResult(false);
     });
   }
 
